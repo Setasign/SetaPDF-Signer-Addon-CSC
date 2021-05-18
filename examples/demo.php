@@ -72,6 +72,7 @@ $algorithm = $credential['key']['algo'][0];
 
 $module->setSignatureAlgorithmOid($algorithm);
 $module->setCertificate($certificate);
+$module->setExtraCertificates($certificates);
 
 if (isset($_GET['otp'])) {
     $module->setOtp($_GET['otp']);
