@@ -4,9 +4,6 @@ return [
     'clientId' => 'your-client-id',
     'clientSecret' => 'your-client-secret',
     'oauth2redirectUrl' => 'https://your-domain/generate-token.php',
-    'oauth2urlAuthorize' => 'https://oauth-sandbox.ssl.com/oauth2/authorize',
-    'oauth2urlAccessToken' => 'https://oauth-sandbox.ssl.com/oauth2/token',
-    'oauth2urlResourceOwnerDetails' => 'https://oauth-sandbox.ssl.com/oauth2/resource',
     'oauth2scope' => 'service',
     'apiUri' => 'https://cs-try.ssl.com/csc/v0'
 ];

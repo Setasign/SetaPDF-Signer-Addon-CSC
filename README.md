@@ -17,7 +17,7 @@ At the moment we do not support RSA_PSS or ECDSA as signing algorithm because of
 
 Authentification is only supported over oauth2. Authentification over HTTP Basic or Digest
 authentification is not supported yet. But an implementation of auth/login (11.2) should be 
-relativly easy.
+relativly easy.t
 
 Online One-Time Password (OTP) generation mechanism aren't supported yet. You'll have to trigger
 the OTP generation by yourself - see API credentials/sendOTP (11.8).
@@ -77,16 +77,23 @@ and execute `composer update`. You need to define the `repository` to resolve th
 
 All classes in this package are located in the namespace `setasign\SetaPDF\Signer\Module\CSC`.
 
-### The `Module` class
+### The `Client` class
 
-This is the main signature module which can be used with the [SetaPDF-Signer](https://www.setasign.com/signer)
-component. Its constructor requires the following arguments:
+This class communicates directly to your CSC API. It's constructor requires the following arguments:
 
-- `$accessToken` Your oauth access token
 - `$apiUri` The base url of your csc api e.g. "https://cs-try.ssl.com/csc/v0"
 - `$httpClient` PSR-18 HTTP Client implementation.
 - `$requestFactory` PSR-17 HTTP Factory implementation.
 - `$streamFactory` PSR-17 HTTP Factory implementation.
+
+
+### The `Module` class
+
+This is the main signature module which can be used with the [SetaPDF-Signer](https://www.setasign.com/signer)
+component. It's constructor requires the following arguments:
+
+- `$accessToken` Your oauth access token
+- `$client` Your client instance - see above 
 
 ### How do I get an access token?
 
@@ -101,21 +108,23 @@ A simple complete signature process would look like this:
 $httpClient = new GuzzleHttp\Client();
 // if you are using php 7.0 or 7.1
 //$httpClient = new Mjelamanov\GuzzlePsr18\Client($httpClient);
+$requestFactory = new Http\Factory\Guzzle\RequestFactory();
+$streamFactory = new Http\Factory\Guzzle\StreamFactory();
 
-$module = new setasign\SetaPDF\Signer\Module\CSC\Module(
-    $accessToken,
-    $apiUri,
-    $httpClient,
-    new Http\Factory\Guzzle\RequestFactory(),
-    new Http\Factory\Guzzle\StreamFactory()
-);
+$client = new Client($apiUri, $httpClient, $requestFactory, $streamFactory);
 
-$credentialIds = ($module->fetchCredentialsList());
+$credentialIds = ($client->credentialsList($accessToken)['credentialIds']);
 // we just use the first credential on the list
-$module->setCredentialId($credentialIds[0]);
+$credentialId = $credentialIds[0];
 // fetch all informations regarding your credential id like the certificates
-$credential = ($module->fetchCredentialsInfo());
-$certificates = $credential['cert']['certificates'];
+$credentialInfo = ($client->credentialsInfo($accessToken, [
+    'credentialID' => $credentialId,
+    'certificates' => 'chain',
+    'authInfo' => true,
+    'certInfo' => true
+]));
+
+$certificates = $credentialInfo['cert']['certificates'];
 $certificates = array_map(function (string $certificate) {
     return new SetaPDF_Signer_X509_Certificate($certificate);
 }, $certificates);
@@ -126,8 +135,12 @@ foreach ($certificates as $k => $certificate) {
 
 // the first certificate is always the signing certificate
 $certificate = array_shift($certificates);
-$algorithm = $credential['key']['algo'][0];
+$algorithm = $credentialInfo['key']['algo'][0];
 
+$module = new setasign\SetaPDF\Signer\Module\CSC\Module(
+    $accessToken,
+    $client
+);
 $module->setSignatureAlgorithmOid($algorithm);
 $module->setCertificate($certificate);
 

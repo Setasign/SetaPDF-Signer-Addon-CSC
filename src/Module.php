@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /**
  * @copyright Copyright (c) 2021 Setasign GmbH & Co. KG (https://www.setasign.com)
  * @license   http://opensource.org/licenses/mit-license The MIT License
@@ -7,17 +9,11 @@
 
 namespace setasign\SetaPDF\Signer\Module\CSC;
 
-use Exception;
 use InvalidArgumentException;
-use Psr\Http\Client\ClientExceptionInterface;
-use Psr\Http\Client\ClientInterface;
-use Psr\Http\Message\RequestFactoryInterface;
-use Psr\Http\Message\StreamFactoryInterface;
 use SetaPDF_Core_Reader_FilePath;
 use SetaPDF_Core_Type_Dictionary;
 use SetaPDF_Core_Document as Document;
 use SetaPDF_Signer_Asn1_Element as Asn1Element;
-use SetaPDF_Signer_Asn1_Oid as Asn1Oid;
 use SetaPDF_Signer_Digest as Digest;
 use SetaPDF_Signer_Exception;
 use SetaPDF_Signer_Signature_DictionaryInterface;
@@ -36,19 +32,9 @@ class Module implements
     SetaPDF_Signer_Signature_DocumentInterface
 {
     /**
-     * @var ClientInterface PSR-18 HTTP Client implementation.
+     * @var Client
      */
-    protected $httpClient;
-
-    /**
-     * @var RequestFactoryInterface PSR-17 HTTP Factory implementation.
-     */
-    protected $requestFactory;
-
-    /**
-     * @var StreamFactoryInterface PSR-17 HTTP Factory implementation.
-     */
-    protected $streamFactory;
+    protected $client;
 
     /**
      * @var SetaPDF_Signer_Signature_Module_Pades Internal pades module.
@@ -64,11 +50,6 @@ class Module implements
      * @var string|null
      */
     protected $credentialId;
-
-    /**
-     * @var string
-     */
-    protected $apiUri;
 
     /**
      * @var string|null
@@ -94,85 +75,20 @@ class Module implements
      * Module constructor.
      *
      * @param string $accessToken
-     * @param string $apiUri
-     * @param ClientInterface $httpClient PSR-18 HTTP Client implementation.
-     * @param RequestFactoryInterface $requestFactory PSR-17 HTTP Factory implementation.
-     * @param StreamFactoryInterface $streamFactory PSR-17 HTTP Factory implementation.
+     * @param Client $client
      */
     public function __construct(
         string $accessToken,
-        string $apiUri,
-        ClientInterface $httpClient,
-        RequestFactoryInterface $requestFactory,
-        StreamFactoryInterface $streamFactory
+        Client $client
     ) {
         $this->accessToken = $accessToken;
-        $this->apiUri = $apiUri;
-        $this->httpClient = $httpClient;
-        $this->requestFactory = $requestFactory;
-        $this->streamFactory = $streamFactory;
+        $this->client = $client;
         $this->padesModule = new SetaPDF_Signer_Signature_Module_Pades();
-    }
-
-    /**
-     * Returns the list of credentials associated with a user identifier. A user MAY have one or multiple credentials
-     * hosted by a single remote signing service provider.
-     *
-     * @see CSC API /credentials/list
-     * @return array
-     * @throws Exception
-     * @throws ClientExceptionInterface
-     */
-    public function fetchCredentialsList(): array
-    {
-        $request = (
-            $this->requestFactory->createRequest('POST', $this->apiUri . '/credentials/list')
-            ->withHeader('Content-Type', 'application/json')
-            ->withHeader('Authorization', 'Bearer ' . $this->accessToken)
-            ->withBody($this->streamFactory->createStream('{}'))
-        );
-        $response = $this->httpClient->sendRequest($request);
-        if ($response->getStatusCode() !== 200) {
-            throw new Exception('Error on fetching the credentials: ' . $response->getBody());
-        }
-
-        $responseBody = $this->json_decode($response->getBody());
-        return $responseBody['credentialIDs'];
     }
 
     public function setCredentialId(string $credentialId): void
     {
         $this->credentialId = $credentialId;
-    }
-
-    /**
-     * Retrieve the credential and return the main identity information and the public key certificate or the
-     * certificate chain associated to it.
-     *
-     * @see CSC API /credentials/info
-     * @return array
-     * @throws ClientExceptionInterface
-     * @throws Exception
-     */
-    public function fetchCredentialsInfo(): array
-    {
-        $request = (
-            $this->requestFactory->createRequest('POST', $this->apiUri . '/credentials/info')
-            ->withHeader('Content-Type', 'application/json')
-            ->withHeader('Authorization', 'Bearer ' . $this->accessToken)
-            ->withBody($this->streamFactory->createStream(\json_encode([
-                'credentialID' => $this->credentialId,
-                'certificates' => 'chain',
-                'authInfo' => true,
-                'certInfo' => true
-            ])))
-        );
-        $response = $this->httpClient->sendRequest($request);
-        if ($response->getStatusCode() !== 200) {
-            throw new Exception('Error on fetching the credentials: ' . $response->getBody());
-        }
-
-        return $this->json_decode($response->getBody());
     }
 
     public function setOtp(string $otp): void
@@ -183,31 +99,6 @@ class Module implements
     public function setPin(string $pin): void
     {
         $this->pin = $pin;
-    }
-
-    /**
-     * @param string $json
-     * @param bool $assoc
-     * @param int $depth
-     * @param int $options
-     * @return mixed
-     * @throws Exception
-     */
-    protected function json_decode(string $json, bool $assoc = true, int $depth = 512, int $options = 0)
-    {
-        // Clear json_last_error()
-        \json_encode(null);
-
-        $data = @\json_decode($json, $assoc, $depth, $options);
-
-        if (\json_last_error() !== JSON_ERROR_NONE) {
-            throw new Exception(\sprintf(
-                'Unable to decode JSON: %s',
-                \json_last_error_msg()
-            ));
-        }
-
-        return $data;
     }
 
     /**
@@ -425,61 +316,43 @@ class Module implements
             $authorizeData['OTP'] = $this->otp;
         }
 
-        $request = (
-            $this->requestFactory->createRequest('POST', $this->apiUri . '/credentials/authorize')
-            ->withHeader('Content-Type', 'application/json')
-            ->withHeader('Authorization', 'Bearer ' . $this->accessToken)
-            ->withBody($this->streamFactory->createStream(\json_encode($authorizeData)))
-        );
-        $response = $this->httpClient->sendRequest($request);
-        if ($response->getStatusCode() !== 200) {
-            throw new Exception('Error on authorize the credentials: ' . $response->getBody());
-        }
-        $sad = $this->json_decode($response->getBody())['SAD'];
+        $sad = $this->client->credentialsAuthorize($this->accessToken, $authorizeData)['SAD'];
 
-        $request = (
-            $this->requestFactory->createRequest('POST', $this->apiUri . '/signatures/signHash')
-            ->withHeader('Content-Type', 'application/json')
-            ->withHeader('Authorization', 'Bearer ' . $this->accessToken)
-            ->withBody($this->streamFactory->createStream(\json_encode([
-                'credentialID' => $this->credentialId,
-                'SAD' => $sad,
-                'hash' => [
-                    $hashData
-                ],
-                'signAlgo' => $this->signatureAlgorithmOid,
-//            'hashAlgo' => Digest::$oids[$padesDigest]
-            ])))
-        );
-        $response = $this->httpClient->sendRequest($request);
-        if ($response->getStatusCode() !== 200) {
-            throw new Exception('Error on signing the hash: ' . $response->getBody());
-        }
-        $signatureValue = \base64_decode($this->json_decode($response->getBody())['signatures'][0]);
 
-        // TODO double check this
-        if ($this->signAlgorithm === Digest::ECDSA_ALGORITHM) {
-            // THIS NEEDS TO BE USED TO FIX EC SIGNATURES
-            $len = strlen($signatureValue);
+        $signData = [
+            'credentialID' => $this->credentialId,
+            'SAD' => $sad,
+            'hash' => [
+                $hashData
+            ],
+            'signAlgo' => $this->signatureAlgorithmOid
+        ];
+        $result = $this->client->signaturesSignHash($this->accessToken, $signData);
+        $signatureValue = \base64_decode($result['signatures'][0]);
 
-            $s = substr($signatureValue, 0, $len / 2);
-            if (ord($s[0]) & 0x80) { // ensure positive integers
-                $s = "\0" . $s;
-            }
-            $r = substr($signatureValue, $len / 2);
-            if (ord($r[0]) & 0x80) { // ensure positive integers
-                $r = "\0" . $r;
-            }
-
-            $signatureValue = new Asn1Element(
-                Asn1Element::SEQUENCE | Asn1Element::IS_CONSTRUCTED,
-                '',
-                [
-                    new Asn1Element(Asn1Element::INTEGER, $s),
-                    new Asn1Element(Asn1Element::INTEGER, $r),
-                ]
-            );
-        }
+        // TODO check this
+//        if ($this->signAlgorithm === Digest::ECDSA_ALGORITHM) {
+//            // THIS NEEDS TO BE USED TO FIX EC SIGNATURES
+//            $len = strlen($signatureValue);
+//
+//            $s = substr($signatureValue, 0, $len / 2);
+//            if (ord($s[0]) & 0x80) { // ensure positive integers
+//                $s = "\0" . $s;
+//            }
+//            $r = substr($signatureValue, $len / 2);
+//            if (ord($r[0]) & 0x80) { // ensure positive integers
+//                $r = "\0" . $r;
+//            }
+//
+//            $signatureValue = new Asn1Element(
+//                Asn1Element::SEQUENCE | Asn1Element::IS_CONSTRUCTED,
+//                '',
+//                [
+//                    new Asn1Element(Asn1Element::INTEGER, $s),
+//                    new Asn1Element(Asn1Element::INTEGER, $r),
+//                ]
+//            );
+//        }
 
         // pass it to the module
         $this->padesModule->setSignatureValue((string) $signatureValue);

@@ -2,13 +2,14 @@
 
 declare(strict_types=1);
 
+use setasign\SetaPDF\Signer\Module\CSC\Client;
 use setasign\SetaPDF\Signer\Module\CSC\Module;
-
-require_once(__DIR__ . '/../vendor/autoload.php');
 
 ini_set('display_errors', '1');
 ini_set('display_startup_errors', '1');
 error_reporting(E_ALL);
+
+require_once(__DIR__ . '/../vendor/autoload.php');
 
 session_start();
 
@@ -29,7 +30,8 @@ $streamFactory = new Http\Factory\Guzzle\StreamFactory();
 
 // to create or update your oauth access token you have to call generate-token.php first
 if (!isset($_SESSION['accessToken']['access_token'])) {
-    throw new RuntimeException('Missing access token!');
+    echo 'Missing access token! <a href="generate-token.php">Login here</a>';
+    die();
 }
 // validate the oauth access token
 $accessToken = $_SESSION['accessToken']['access_token'];
@@ -53,16 +55,24 @@ if (isset($_SESSION['accessToken']['expires_in'])) {
 }
 
 if (!isset($expires) || $expires <= time()) {
-    throw new RuntimeException('Access token is expired!');
+    echo 'Access token is expired! <a href="generate-token.php">Renew here</a>';
+    die();
 }
 
-$module = new Module($accessToken, $apiUri, $httpClient, $requestFactory, $streamFactory);
-$credentialIds = ($module->fetchCredentialsList());
+$client = new Client($apiUri, $httpClient, $requestFactory, $streamFactory);
+$credentialIds = ($client->credentialsList($accessToken)['credentialIds']);
 var_dump($credentialIds);
-$module->setCredentialId($credentialIds[0]);
-$credential = ($module->fetchCredentialsInfo());
-var_dump($credential);
-$certificates = $credential['cert']['certificates'];
+// we just use the first credential on the list
+$credentialId = $credentialIds[0];
+// fetch all informations regarding your credential id like the certificates
+$credentialInfo = ($client->credentialsInfo($accessToken, [
+    'credentialID' => $credentialId,
+    'certificates' => 'chain',
+    'authInfo' => true,
+    'certInfo' => true
+]));
+var_dump($credentialInfo);
+$certificates = $credentialInfo['cert']['certificates'];
 $certificates = array_map(function (string $certificate) {
     return new SetaPDF_Signer_X509_Certificate($certificate);
 }, $certificates);
@@ -71,7 +81,9 @@ foreach ($certificates as $k => $certificate) {
 }
 
 $certificate = array_shift($certificates);
-$algorithm = $credential['key']['algo'][0];
+$algorithm = $credentialInfo['key']['algo'][0];
+
+$module = new Module($accessToken, $client);
 $module->setSignatureAlgorithmOid($algorithm);
 $module->setCertificate($certificate);
 

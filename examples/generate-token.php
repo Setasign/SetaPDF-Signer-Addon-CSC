@@ -2,6 +2,11 @@
 
 use League\OAuth2\Client\Provider\GenericProvider;
 use League\OAuth2\Client\Token\AccessToken;
+use setasign\SetaPDF\Signer\Module\CSC\Client;
+
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
 
 require_once(__DIR__ . '/../vendor/autoload.php');
 
@@ -10,10 +15,19 @@ require_once(__DIR__ . '/../vendor/autoload.php');
  */
 
 $settings = require __DIR__ . '/settings.php';
+$apiUri = $settings['apiUri'];
 
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
+$httpClient = new GuzzleHttp\Client();
+$httpClient = new Mjelamanov\GuzzlePsr18\Client($httpClient);
+$requestFactory = new Http\Factory\Guzzle\RequestFactory();
+$streamFactory = new Http\Factory\Guzzle\StreamFactory();
+
+$client = new Client($apiUri, $httpClient, $requestFactory, $streamFactory);
+$info = $client->info();
+
+if (!in_array('oauth2code', $info['authType'])) {
+    throw new Exception('OAuth2 isn\'t supported by your CSC API.');
+}
 
 session_start();
 
@@ -21,9 +35,9 @@ $provider = new GenericProvider([
     'clientId' => $settings['clientId'],
     'clientSecret' => $settings['clientSecret'],
     'redirectUri' => $settings['oauth2redirectUrl'],
-    'urlAuthorize' => $settings['oauth2urlAuthorize'],
-    'urlAccessToken' => $settings['oauth2urlAccessToken'],
-    'urlResourceOwnerDetails' => $settings['oauth2urlResourceOwnerDetails'],
+    'urlAuthorize' => $info['oauth2'] . '/oauth2/authorize',
+    'urlAccessToken' => $info['oauth2'] . '/oauth2/token',
+    'urlResourceOwnerDetails' => $info['oauth2'] . '/oauth2/resource',
 ]);
 
 if (isset($_GET['reset'])) {
@@ -84,4 +98,7 @@ echo 'Access Token: ' . $accessToken->getToken() . "<br>";
 echo 'Refresh Token: ' . $accessToken->getRefreshToken() . "<br>";
 echo 'Expired in: ' . date('c', $accessToken->getExpires()) . "<br>";
 echo 'Already expired? ' . ($accessToken->hasExpired() ? 'expired' : 'not expired') . "<br>";
+
+echo '<a href="demo.php">Go to demo.php</a><br/>';
+echo '<a href="ltv-demo.php">Go to ltv-demo.php</a><br/>';
 
