@@ -15,6 +15,7 @@ use SetaPDF_Core_Type_Dictionary;
 use SetaPDF_Core_Document as Document;
 use SetaPDF_Signer_Asn1_Element as Asn1Element;
 use SetaPDF_Signer_Digest as Digest;
+use SetaPDF_Signer_Asn1_Oid as Asn1Oid;
 use SetaPDF_Signer_Exception;
 use SetaPDF_Signer_Signature_DictionaryInterface;
 use SetaPDF_Signer_Signature_DocumentInterface;
@@ -218,88 +219,91 @@ class Module implements
             throw new \BadMethodCallException('Missing signature algorithm!');
         }
 
-        // todo
-//         // update CMS SignatureAlgorithmIdentifier according to Probabilistic Signature Scheme (RSASSA-PSS)
-//        if ($this->signAlgorithm === Digest::RSA_PSS_ALGORITHM) {
-//            // Here https://docs.microsoft.com/en-us/rest/api/keyvault/sign/sign#jsonwebkeysignaturealgorithm
-//            // the algorihms are linked to https://tools.ietf.org/html/rfc7518#section-3.5 which says:
-//            // "The size of the salt value is the same size as the hash function output."
-//            $saltLength = 256 / 8;
-//            if ($signatureAlgorithm === 'PS384') {
-//                $saltLength = 384 / 8;
-//            } elseif ($signatureAlgorithm === 'PS512') {
-//                $saltLength = 512 / 8;
-//            }
-//
-//            $cms = $this->padesModule->getCms();
-//
-//            $signatureAlgorithmIdentifier = Asn1Element::findByPath('1/0/4/0/4', $cms);
-//            $signatureAlgorithmIdentifier->getChild(0)->setValue(
-//                Asn1Oid::encode("1.2.840.113549.1.1.10")
-//            );
-//            $signatureAlgorithmIdentifier->removeChild($signatureAlgorithmIdentifier->getChild(1));
-//            $signatureAlgorithmIdentifier->addChild(new Asn1Element(
-//                Asn1Element::SEQUENCE | Asn1Element::IS_CONSTRUCTED,
-//                '',
-//                [
-//                    new Asn1Element(
-//                        Asn1Element::TAG_CLASS_CONTEXT_SPECIFIC | Asn1Element::IS_CONSTRUCTED,
-//                        '',
-//                        [
-//                            new Asn1Element(
-//                                Asn1Element::SEQUENCE | Asn1Element::IS_CONSTRUCTED,
-//                                '',
-//                                [
-//                                    new Asn1Element(
-//                                        Asn1Element::OBJECT_IDENTIFIER,
-//                                        Asn1Oid::encode(Digest::getOid($this->padesModule->getDigest()))
-//                                    ),
-//                                    new Asn1Element(Asn1Element::NULL)
-//                                ]
-//                            )
-//                        ]
-//                    ),
-//                    new Asn1Element(
-//                        Asn1Element::TAG_CLASS_CONTEXT_SPECIFIC | Asn1Element::IS_CONSTRUCTED | "\x01",
-//                        '',
-//                        [
-//                            new Asn1Element(
-//                                Asn1Element::SEQUENCE | Asn1Element::IS_CONSTRUCTED,
-//                                '',
-//                                [
-//                                    new Asn1Element(
-//                                        Asn1Element::OBJECT_IDENTIFIER,
-//                                        Asn1Oid::encode('1.2.840.113549.1.1.8')
-//                                    ),
-//                                    new Asn1Element(
-//                                        Asn1Element::SEQUENCE | Asn1Element::IS_CONSTRUCTED,
-//                                        '',
-//                                        [
-//                                            new Asn1Element(
-//                                                Asn1Element::OBJECT_IDENTIFIER,
-//                                                Asn1Oid::encode(Digest::getOid(
-//                                                    $this->padesModule->getDigest()
-//                                                ))
-//                                            ),
-//                                            new Asn1Element(Asn1Element::NULL)
-//                                        ]
-//                                    )
-//                                ]
-//                            )
-//                        ]
-//                    ),
-//                    new Asn1Element(
-//                        Asn1Element::TAG_CLASS_CONTEXT_SPECIFIC | Asn1Element::IS_CONSTRUCTED | "\x02", '',
-//                        [
-//                            new Asn1Element(Asn1Element::INTEGER, \chr($saltLength))
-//                        ]
-//                    )
-//                ]
-//            ));
-//        }
-
         // get the hash data from the module
         $padesDigest = $this->padesModule->getDigest();
+
+        // update CMS SignatureAlgorithmIdentifier according to Probabilistic Signature Scheme (RSASSA-PSS)
+        if ($this->signAlgorithm === Digest::RSA_PSS_ALGORITHM) {
+            // let's use a salt length of the same size as the hash function output
+            $saltLength = 256 / 8;
+             if ($padesDigest === \SetaPDF_Signer_Digest::SHA_384) {
+                 $saltLength = 384 / 8;
+            } elseif ($padesDigest === \SetaPDF_Signer_Digest::SHA_512) {
+                 $saltLength = 512 / 8;
+            }
+
+            $cms = $this->padesModule->getCms();
+
+            $signatureAlgorithmIdentifier = Asn1Element::findByPath('1/0/4/0/4', $cms);
+            $signatureAlgorithmIdentifier->getChild(0)->setValue(
+                Asn1Oid::encode("1.2.840.113549.1.1.10")
+            );
+            $signatureAlgorithmIdentifier->removeChild($signatureAlgorithmIdentifier->getChild(1));
+            $signatureAlgorithmParameters = new Asn1Element(
+                Asn1Element::SEQUENCE | Asn1Element::IS_CONSTRUCTED,
+                '',
+                [
+                    new Asn1Element(
+                        Asn1Element::TAG_CLASS_CONTEXT_SPECIFIC | Asn1Element::IS_CONSTRUCTED,
+                        '',
+                        [
+                            new Asn1Element(
+                                Asn1Element::SEQUENCE | Asn1Element::IS_CONSTRUCTED,
+                                '',
+                                [
+                                    new Asn1Element(
+                                        Asn1Element::OBJECT_IDENTIFIER,
+                                        Asn1Oid::encode(Digest::getOid($this->padesModule->getDigest()))
+                                    ),
+                                    new Asn1Element(Asn1Element::NULL)
+                                ]
+                            )
+                        ]
+                    ),
+                    new Asn1Element(
+                        Asn1Element::TAG_CLASS_CONTEXT_SPECIFIC | Asn1Element::IS_CONSTRUCTED | "\x01",
+                        '',
+                        [
+                            new Asn1Element(
+                                Asn1Element::SEQUENCE | Asn1Element::IS_CONSTRUCTED,
+                                '',
+                                [
+                                    new Asn1Element(
+                                        Asn1Element::OBJECT_IDENTIFIER,
+                                        Asn1Oid::encode('1.2.840.113549.1.1.8')
+                                    ),
+                                    new Asn1Element(
+                                        Asn1Element::SEQUENCE | Asn1Element::IS_CONSTRUCTED,
+                                        '',
+                                        [
+                                            new Asn1Element(
+                                                Asn1Element::OBJECT_IDENTIFIER,
+                                                Asn1Oid::encode(Digest::getOid(
+                                                    $this->padesModule->getDigest()
+                                                ))
+                                            ),
+                                            new Asn1Element(Asn1Element::NULL)
+                                        ]
+                                    )
+                                ]
+                            )
+                        ]
+                    ),
+                    new Asn1Element(
+                        Asn1Element::TAG_CLASS_CONTEXT_SPECIFIC | Asn1Element::IS_CONSTRUCTED | "\x02", '',
+                        [
+                            new Asn1Element(Asn1Element::INTEGER, \chr($saltLength))
+                        ]
+                    )
+                ]
+            );
+            $signatureAlgorithmIdentifier->addChild($signatureAlgorithmParameters);
+
+            throw new \SetaPDF_Exception_NotImplemented(
+                'Signatures with PSS padding were not tested yet. Please contact support@setasign.com with details of your CSC API.'
+            );
+        }
+
         $hashData = \base64_encode(hash($padesDigest, $this->padesModule->getDataToSign($tmpPath), true));
 
         $SAD = $this->client->credentialsAuthorize(
@@ -316,33 +320,48 @@ class Module implements
             $SAD,
             [$hashData],
             $this->signatureAlgorithmOid,
-            Digest::$oids[$padesDigest]
+            Digest::$oids[$padesDigest],
+            isset($signatureAlgorithmParameters) ? (string)$signatureAlgorithmParameters : null
         );
         $signatureValue = \base64_decode($result['signatures'][0]);
 
-        // TODO check this
-//        if ($this->signAlgorithm === Digest::ECDSA_ALGORITHM) {
-//            // THIS NEEDS TO BE USED TO FIX EC SIGNATURES
-//            $len = strlen($signatureValue);
-//
-//            $s = substr($signatureValue, 0, $len / 2);
-//            if (ord($s[0]) & 0x80) { // ensure positive integers
-//                $s = "\0" . $s;
-//            }
-//            $r = substr($signatureValue, $len / 2);
-//            if (ord($r[0]) & 0x80) { // ensure positive integers
-//                $r = "\0" . $r;
-//            }
-//
-//            $signatureValue = new Asn1Element(
-//                Asn1Element::SEQUENCE | Asn1Element::IS_CONSTRUCTED,
-//                '',
-//                [
-//                    new Asn1Element(Asn1Element::INTEGER, $s),
-//                    new Asn1Element(Asn1Element::INTEGER, $r),
-//                ]
-//            );
-//        }
+        if ($this->signAlgorithm === Digest::ECDSA_ALGORITHM) {
+            // Let's ensure that the ECDSA-Sig-Value is DER encoded.
+            // Some other services (e.g. KMS systems)  return the signature value as raw concatenated "r+s" value.
+            // Maybe this also happens by a CSC API? The signature encoding is sadly not defined.
+            try {
+                Asn1Element::parse($signatureValue);
+
+            } catch (\SetaPDF_Signer_Asn1_Exception $e) {
+                /* According to RFC5753 2.1.1:
+                 *  - signature MUST contain the DER encoding (as an octet string) of a value of the ASN.1 type
+                 *    ECDSA-Sig-Value (see Section 7.2).
+                 */
+                $len = strlen($signatureValue);
+
+                $s = \substr($signatureValue, 0, $len / 2);
+                if (\ord($s[0]) & 0x80) { // ensure positive integers
+                    $s = "\0" . $s;
+                }
+                $r = \substr($signatureValue, $len / 2);
+                if (\ord($r[0]) & 0x80) { // ensure positive integers
+                    $r = "\0" . $r;
+                }
+
+                $signatureValue = new Asn1Element(
+                    Asn1Element::SEQUENCE | Asn1Element::IS_CONSTRUCTED,
+                    '',
+                    [
+                        new Asn1Element(Asn1Element::INTEGER, $s),
+                        new Asn1Element(Asn1Element::INTEGER, $r),
+                    ]
+                );
+            }
+
+            throw new \SetaPDF_Exception_NotImplemented(
+                'EC signatures were not tested yet. Please contact support@setasign.com with details of your CSC API.'
+            );
+        }
 
         // pass it to the module
         $this->padesModule->setSignatureValue((string) $signatureValue);
