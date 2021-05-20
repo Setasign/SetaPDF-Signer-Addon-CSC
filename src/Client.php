@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace setasign\SetaPDF\Signer\Module\CSC;
 
-use Exception;
 use Psr\Http\Client\ClientExceptionInterface;
 use Psr\Http\Client\ClientInterface;
 use Psr\Http\Message\RequestFactoryInterface;
