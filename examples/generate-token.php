@@ -97,7 +97,6 @@ if (isset($_SESSION['accessToken'])) {
 echo 'Access Token: ' . $accessToken->getToken() . "<br>";
 echo 'Refresh Token: ' . $accessToken->getRefreshToken() . "<br>";
 echo 'Expired in: ' . date('c', $accessToken->getExpires()) . "<br>";
-echo 'Already expired? ' . ($accessToken->hasExpired() ? 'expired' : 'not expired') . "<br>";
 
 echo '<a href="demo.php">Go to demo.php</a><br/>';
 echo '<a href="ltv-demo.php">Go to ltv-demo.php</a><br/>';

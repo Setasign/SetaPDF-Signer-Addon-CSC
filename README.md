@@ -117,12 +117,7 @@ $credentialIds = ($client->credentialsList($accessToken)['credentialIds']);
 // we just use the first credential on the list
 $credentialId = $credentialIds[0];
 // fetch all informations regarding your credential id like the certificates
-$credentialInfo = ($client->credentialsInfo($accessToken, [
-    'credentialID' => $credentialId,
-    'certificates' => 'chain',
-    'authInfo' => true,
-    'certInfo' => true
-]));
+$credentialInfo = $client->credentialsInfo($accessToken, $credentialId, 'chain', true, true);
 
 $certificates = $credentialInfo['cert']['certificates'];
 $certificates = array_map(function (string $certificate) {

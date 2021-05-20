@@ -19,61 +19,39 @@ $apiUri = $settings['apiUri'];
 $fileToSign = __DIR__ . '/Laboratory-Report.pdf';
 $resultPath = 'signed.pdf';
 
+// to create or update your access token you have to call generate-token.php first
+if (!isset($_SESSION['accessToken']['access_token'])) {
+    echo 'Missing access token! <a href="generate-token.php">Login here</a>';
+    die();
+}
+// check if the access token is still valid
+if (!isset($_SESSION['accessToken']['expires']) || $_SESSION['accessToken']['expires'] < time()) {
+    echo 'Access token is expired! <a href="generate-token.php">Renew here</a>';
+    die();
+}
+$accessToken = $_SESSION['accessToken']['access_token'];
+
 $httpClient = new GuzzleHttp\Client();
 $httpClient = new Mjelamanov\GuzzlePsr18\Client($httpClient);
 $requestFactory = new Http\Factory\Guzzle\RequestFactory();
 $streamFactory = new Http\Factory\Guzzle\StreamFactory();
-
-// to create or update your oauth access token you have to call generate-token.php first
-if (!isset($_SESSION['accessToken']['access_token'])) {
-    throw new RuntimeException('Missing access token! <a href="generate-token.php">Login here</a>');
-}
-$accessToken = $_SESSION['accessToken']['access_token'];
-// validate the oauth access token
-if (isset($_SESSION['accessToken']['expires_in'])) {
-    if (!is_numeric($_SESSION['accessToken']['expires_in'])) {
-        throw new InvalidArgumentException('expires_in value must be an integer');
-    }
-
-    $expires = $_SESSION['accessToken']['expires_in'] != 0 ? time() + $_SESSION['accessToken']['expires_in'] : 0;
-} elseif (!empty($_SESSION['accessToken']['expires'])) {
-    // Some providers supply the seconds until expiration rather than
-    // the exact timestamp. Take a best guess at which we received.
-    $expires = $_SESSION['accessToken']['expires'];
-
-    // If the given value is larger than the original OAuth 2 draft date,
-    // assume that it is meant to be a (possible expired) timestamp.
-    $oauth2InceptionDate = 1349067600; // 2012-10-01
-    if ($expires < $oauth2InceptionDate) {
-        $expires += time();
-    }
-}
-
-if (!isset($expires) || $expires <= time()) {
-    echo 'Access token is expired! <a href="generate-token.php">Renew here</a>';
-    die();
-}
-
 $client = new Client($apiUri, $httpClient, $requestFactory, $streamFactory);
+
 $credentialIds = ($client->credentialsList($accessToken))['credentialIDs'];
 var_dump($credentialIds);
 // we just use the first credential on the list
 $credentialId = $credentialIds[0];
 // fetch all informations regarding your credential id like the certificates
-$credentialInfo = ($client->credentialsInfo($accessToken, [
-    'credentialID' => $credentialId,
-    'certificates' => 'chain',
-    'authInfo' => true,
-    'certInfo' => true
-]));
+$credentialInfo = $client->credentialsInfo($accessToken, $credentialId, 'chain', true, true);
 var_dump($credentialInfo);
 $certificates = $credentialInfo['cert']['certificates'];
 $certificates = array_map(function (string $certificate) {
     return new SetaPDF_Signer_X509_Certificate($certificate);
 }, $certificates);
-foreach ($certificates as $k => $certificate) {
-    file_put_contents('cert-' . $k . '.pem', $certificate->get());
-}
+// to cache the certificate files
+//foreach ($certificates as $k => $certificate) {
+//    file_put_contents('cert-' . $k . '.pem', $certificate->get());
+//}
 
 // the first certificate is always the signing certificate
 $certificate = array_shift($certificates);

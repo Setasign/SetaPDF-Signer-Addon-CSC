@@ -301,33 +301,23 @@ class Module implements
         // get the hash data from the module
         $padesDigest = $this->padesModule->getDigest();
         $hashData = \base64_encode(hash($padesDigest, $this->padesModule->getDataToSign($tmpPath), true));
-        $authorizeData = [
-            'credentialID' => $this->credentialId,
-            'numSignatures' => 1,
-            'hash' => [
-                $hashData
-            ],
-        ];
-        if ($this->pin !== null) {
-            $authorizeData['PIN'] = $this->pin;
-        }
 
-        if ($this->otp !== null) {
-            $authorizeData['OTP'] = $this->otp;
-        }
+        $SAD = $this->client->credentialsAuthorize(
+            $this->accessToken,
+            $this->credentialId,
+            [$hashData],
+            $this->pin,
+            $this->otp
+        )['SAD'];
 
-        $sad = $this->client->credentialsAuthorize($this->accessToken, $authorizeData)['SAD'];
-
-
-        $signData = [
-            'credentialID' => $this->credentialId,
-            'SAD' => $sad,
-            'hash' => [
-                $hashData
-            ],
-            'signAlgo' => $this->signatureAlgorithmOid
-        ];
-        $result = $this->client->signaturesSignHash($this->accessToken, $signData);
+        $result = $this->client->signaturesSignHash(
+            $this->accessToken,
+            $this->credentialId,
+            $SAD,
+            [$hashData],
+            $this->signatureAlgorithmOid,
+            Digest::$oids[$padesDigest]
+        );
         $signatureValue = \base64_decode($result['signatures'][0]);
 
         // TODO check this

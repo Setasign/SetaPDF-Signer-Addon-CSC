@@ -91,29 +91,54 @@ class Client
     }
 
     /**
-     * Returns information about the remote service and the list of the API methods it supports.
-     * This method SHALL be implemented by any remote service conforming to this specification.
-     *
+     * @param string $path
+     * @param string|null $accessToken
      * @param array $inputData
      * @return array
      * @throws ClientExceptionInterface
      * @throws Exception
-     * @see CSC API 11.1 /info
      */
-    public function info(array $inputData = []): array
+    public function call(string $path, ?string $accessToken = null, array $inputData = []): array
     {
+        if (count($inputData) === 0) {
+            $inputData = '{}';
+        } else {
+            $inputData = \json_encode($inputData);
+        }
+
         $request = (
-            $this->requestFactory->createRequest('POST', $this->apiUri . '/info')
+            $this->requestFactory->createRequest('POST', $this->apiUri . $path)
             ->withHeader('Content-Type', 'application/json')
-            ->withBody($this->streamFactory->createStream(\json_encode($inputData, JSON_FORCE_OBJECT)))
+            ->withBody($this->streamFactory->createStream($inputData))
         );
+        if ($accessToken !== null) {
+            $request = $request->withHeader('Authorization', 'Bearer ' . $accessToken);
+        }
 
         $response = $this->httpClient->sendRequest($request);
         if ($response->getStatusCode() !== 200) {
-            throw new Exception('Error on /info: ' . $response->getBody());
+            throw new Exception('Error on ' . $path . ': ' . $response->getBody());
         }
 
         return $this->json_decode((string) $response->getBody());
+    }
+
+    /**
+     * Returns information about the remote service and the list of the API methods it supports.
+     * This method SHALL be implemented by any remote service conforming to this specification.
+     *
+     * @param string|null $lang
+     * @return array
+     * @throws ClientExceptionInterface
+     * @see CSC API 11.1 /info
+     */
+    public function info(?string $lang = null): array
+    {
+        $inputData = [];
+        if ($lang !== null) {
+            $inputData['lang'] = $lang;
+        }
+        return $this->call('/info', null, $inputData);
     }
 
     /**
@@ -121,26 +146,36 @@ class Client
      * hosted by a single remote signing service provider.
      *
      * @param string $accessToken
-     * @param array $inputData
+     * @param string|null $userID
+     * @param int|null $maxResults
+     * @param string|null $pageToken
+     * @param string|null $clientData
      * @return array
      * @throws ClientExceptionInterface
-     * @throws Exception
      * @see CSC API 11.4 /credentials/list
      */
-    public function credentialsList(string $accessToken, array $inputData = []): array
-    {
-        $request = (
-            $this->requestFactory->createRequest('POST', $this->apiUri . '/credentials/list')
-            ->withHeader('Content-Type', 'application/json')
-            ->withHeader('Authorization', 'Bearer ' . $accessToken)
-            ->withBody($this->streamFactory->createStream(\json_encode($inputData, JSON_FORCE_OBJECT)))
-        );
-        $response = $this->httpClient->sendRequest($request);
-        if ($response->getStatusCode() !== 200) {
-            throw new Exception('Error on /credentials/list: ' . $response->getBody());
+    public function credentialsList(
+        string $accessToken,
+        ?string $userID = null,
+        ?int $maxResults = null,
+        ?string $pageToken = null,
+        ?string $clientData = null
+    ): array {
+        $inputData = [];
+        if ($userID !== null) {
+            $inputData['userID'] = $userID;
+        }
+        if ($maxResults !== null) {
+            $inputData['maxResults'] = $maxResults;
+        }
+        if ($pageToken !== null) {
+            $inputData['pageToken'] = $pageToken;
+        }
+        if ($clientData !== null) {
+            $inputData['clientData'] = $clientData;
         }
 
-        return $this->json_decode((string) $response->getBody());
+        return $this->call('/credentials/list', $accessToken, $inputData);
     }
 
     /**
@@ -148,71 +183,165 @@ class Client
      * certificate chain associated to it.
      *
      * @param string $accessToken
-     * @param array $inputData
+     * @param string|null $credentialID
+     * @param string|null $certificates
+     * @param bool|null $certInfo
+     * @param bool|null $authInfo
+     * @param string|null $lang
+     * @param string|null $clientData
      * @return array
      * @throws ClientExceptionInterface
-     * @throws Exception
      * @see CSC API 11.5 /credentials/info
      */
-    public function credentialsInfo(string $accessToken, array $inputData = []): array
-    {
-        $request = (
-            $this->requestFactory->createRequest('POST', $this->apiUri . '/credentials/info')
-            ->withHeader('Content-Type', 'application/json')
-            ->withHeader('Authorization', 'Bearer ' . $accessToken)
-            ->withBody($this->streamFactory->createStream(\json_encode($inputData, JSON_FORCE_OBJECT)))
-        );
-        $response = $this->httpClient->sendRequest($request);
-        if ($response->getStatusCode() !== 200) {
-            throw new Exception('Error on /credentials/info: ' . $response->getBody());
+    public function credentialsInfo(
+        string $accessToken,
+        string $credentialID = null,
+        ?string $certificates = null,
+        ?bool $certInfo = null,
+        ?bool $authInfo = null,
+        ?string $lang = null,
+        ?string $clientData = null
+    ): array {
+        $inputData = [
+            'credentialID' => $credentialID
+        ];
+        if ($certificates !== null) {
+            $inputData['certificates'] = $certificates;
+        }
+        if ($certInfo !== null) {
+            $inputData['certInfo'] = $certInfo;
+        }
+        if ($authInfo !== null) {
+            $inputData['authInfo'] = $authInfo;
+        }
+        if ($lang !== null) {
+            $inputData['lang'] = $lang;
+        }
+        if ($clientData !== null) {
+            $inputData['clientData'] = $clientData;
         }
 
-        return $this->json_decode((string) $response->getBody());
+        return $this->call('/credentials/info', $accessToken, $inputData);
     }
 
     /**
+     * Start an online One-Time Password (OTP) generation mechanism associated with a credential and managed by the
+     * remote service. This will generate a dynamic one-time password that will be delivered to the user who owns the
+     * credential through an agreed communication channel managed by the remote service (e.g. SMS, email, app, etc.).
+     *
+     * This method SHOULD only be used with “online” OTP generators. In case of “offline” OTP, the signature
+     * application SHOULD NOT invoke this method because the OTP can be generated autonomously by the user.
+     *
      * @param string $accessToken
-     * @param array $inputData
+     * @param string $credentialID
+     * @param string|null $clientData
      * @return array
      * @throws ClientExceptionInterface
-     * @throws Exception
+     * @see CSC API 11.8 /credentials/sendOTP
+     */
+    public function credentialsSendOTP(string $accessToken, string $credentialID, ?string $clientData = null): array
+    {
+        $inputData = [
+            'credentialID' => $credentialID,
+        ];
+
+        if ($clientData !== null) {
+            $inputData['clientData'] = $clientData;
+        }
+
+        return $this->call('/credentials/sendOTP', $accessToken, $inputData);
+    }
+
+    /**
+     * Authorize the access to the credential for remote signing, according to the authorization mechanisms associated
+     * to it. This method returns the Signature Activation Data (SAD) required to authorize the signatures/signHash
+     * method, as defined in section 11.9.
+     *
+     * @param string $accessToken
+     * @param string $credentialID
+     * @param string[] $hash
+     * @param string|null $PIN
+     * @param string|null $OTP
+     * @param string|null $description
+     * @param string|null $clientData
+     * @return array
+     * @throws ClientExceptionInterface
      * @see CSC API 11.6 /credentials/authorize
      */
-    public function credentialsAuthorize(string $accessToken, array $inputData): array
-    {
-        $request = (
-            $this->requestFactory->createRequest('POST', $this->apiUri . '/credentials/authorize')
-            ->withHeader('Content-Type', 'application/json')
-            ->withHeader('Authorization', 'Bearer ' . $accessToken)
-            ->withBody($this->streamFactory->createStream(\json_encode($inputData)))
-        );
-        $response = $this->httpClient->sendRequest($request);
-        if ($response->getStatusCode() !== 200) {
-            throw new Exception('Error on /credentials/authorize: ' . $response->getBody());
+    public function credentialsAuthorize(
+        string $accessToken,
+        string $credentialID,
+        array $hash,
+        ?string $PIN = null,
+        ?string $OTP = null,
+        ?string $description = null,
+        ?string $clientData = null
+    ): array {
+        $inputData = [
+            'credentialID' => $credentialID,
+            'numSignatures' => count($hash),
+            'hash' => $hash,
+        ];
+        if ($PIN !== null) {
+            $inputData['PIN'] = $PIN;
         }
-        return $this->json_decode((string) $response->getBody());
+        if ($OTP !== null) {
+            $inputData['OTP'] = $OTP;
+        }
+        if ($description !== null) {
+            $inputData['description'] = $description;
+        }
+        if ($clientData !== null) {
+            $inputData['clientData'] = $clientData;
+        }
+
+        return $this->call('/credentials/authorize', $accessToken, $inputData);
     }
 
     /**
+     * Calculate the remote digital signature of one or multiple hash values provided in input. This method requires
+     * credential authorization in the form of Signature Activation Data (SAD).
+     *
      * @param string $accessToken
-     * @param array $inputData
+     * @param string $credentialID
+     * @param string $SAD
+     * @param string[] $hash
+     * @param string $signAlgo
+     * @param string|null $hashAlgo
+     * @param string|null $signAlgoParams
+     * @param string|null $clientData
      * @return array
      * @throws ClientExceptionInterface
-     * @throws Exception
      * @see CSC API 11.9 /signatures/signHash
      */
-    public function signaturesSignHash(string $accessToken, array $inputData): array
-    {
-        $request = (
-            $this->requestFactory->createRequest('POST', $this->apiUri . '/signatures/signHash')
-            ->withHeader('Content-Type', 'application/json')
-            ->withHeader('Authorization', 'Bearer ' . $accessToken)
-            ->withBody($this->streamFactory->createStream(\json_encode($inputData)))
-        );
-        $response = $this->httpClient->sendRequest($request);
-        if ($response->getStatusCode() !== 200) {
-            throw new Exception('Error on /signatures/signHash: ' . $response->getBody());
+    public function signaturesSignHash(
+        string $accessToken,
+        string $credentialID,
+        string $SAD,
+        array $hash,
+        string $signAlgo,
+        ?string $hashAlgo = null,
+        ?string $signAlgoParams = null,
+        ?string $clientData = null
+    ): array {
+        $inputData = [
+            'credentialID' => $credentialID,
+            'SAD' => $SAD,
+            'hash' => $hash,
+        ];
+        if ($hashAlgo !== null) {
+            $inputData['hashAlgo'] = $hashAlgo;
         }
-        return $this->json_decode((string) $response->getBody());
+        if ($signAlgo !== null) {
+            $inputData['signAlgo'] = $signAlgo;
+        }
+        if ($signAlgoParams !== null) {
+            $inputData['signAlgoParams'] = $signAlgoParams;
+        }
+        if ($clientData !== null) {
+            $inputData['clientData'] = $clientData;
+        }
+
+        return $this->call('/signatures/signHash', $accessToken, $inputData);
     }
 }
