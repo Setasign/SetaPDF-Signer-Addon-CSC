@@ -41,7 +41,7 @@ $requestFactory = new Http\Factory\Guzzle\RequestFactory();
 $streamFactory = new Http\Factory\Guzzle\StreamFactory();
 $client = new Client($apiUri, $httpClient, $requestFactory, $streamFactory);
 
-$credentialIds = ($client->credentialsList($accessToken)['credentialIds']);
+$credentialIds = ($client->credentialsList($accessToken)['credentialIDs']);
 var_dump($credentialIds);
 // we just use the first credential on the list
 $credentialId = $credentialIds[0];
@@ -61,9 +61,9 @@ $certificate = array_shift($certificates);
 $algorithm = $credentialInfo['key']['algo'][0];
 
 $module = new Module($accessToken, $client);
+$module->setCredentialId($credentialId);
 $module->setSignatureAlgorithmOid($algorithm);
 $module->setCertificate($certificate);
-
 
 // now add these information to the CMS container
 $module->setExtraCertificates($certificates);
