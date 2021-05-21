@@ -1,30 +1,37 @@
 # SetaPDF-Signer-Addon-CSC
 
-This package offers a module for the SetaPDF-Signer component that allows you
-to use an eSigner CSC conform API to digital sign PDF documents in pure PHP.
+This package offers a module for the SetaPDF-Signer component that allows you to use the
+[Cloud Signature Consortium](https://cloudsignatureconsortium.org) API for Remote Electronic Signatures and Remote 
+Electronic Seals to digital sign PDF documents in pure PHP.
 
-You can find the API documentation for CSC here:
-https://cloudsignatureconsortium.org/wp-content/uploads/2020/01/CSC_API_V1_1.0.4.0.pdf
+The API documentation can be found on the Cloud Signature Consortium website:
+https://cloudsignatureconsortium.org/resources/download-api-specifications/
 
-At the moment the module is only tested at ssl.com. We do not yet support all features or variances that may appear on 
-other platforms. To test it yourself you can follow this article:
+At writing time the module is tested with the eSigner CSC API from SSL.com. 
+It currently does not support all features or variances that may appear in other API implementations.
+You can follow this integration guide to get a better understanding of how to setup a test environment and how the
+signature workflow works: 
 https://www.ssl.com/guide/integration-guide-testing-remote-signing-with-esigner-csc-api/
 
-But instead of using postman you can use this module directly and sign your documents.
+We implemented the same workflow in this module but instead of using postman you can use the module directly and 
+sign your PDF documents locally.
 
 ## Known not implemented features
-At the moment we do not support RSA_PSS or ECDSA as signing algorithm because of missing testing options on our side.
 
-Authentification is only supported over oauth2. Authentification over HTTP Basic or Digest
-authentification is not supported yet. But an implementation of auth/login (11.2) should be 
-relativly easy.t
+At the moment the module do not support RSA_PSS or ECDSA as signing algorithm because of missing testing options.
+Both are implemented but will throw an exception to get a chance for a test case. Please contact us at
+support@setasign.com so that we can work on a final implementation together.
 
-Online One-Time Password (OTP) generation mechanism aren't supported yet. You'll have to trigger
-the OTP generation by yourself - see API credentials/sendOTP (11.8).
+Authentification is only supported over [OAuth2](https://oauth.net/2/). Authentification over HTTP Basic or Digest
+authentification is not implemented yet. An implementation of the `auth/login` (11.2) endpoint shouldn't require much 
+efford. If you need this, feel free to contact us at support@setasign.com so that we can work on this together.
+
+Online One-Time Password (OTP) generation mechanism is not implemented yet. You'll have to trigger
+the OTP generation by yourself - see API `credentials/sendOTP` (11.8).
 
 ## Requirements
 
-To use this package you need access to an CSC API like [the eSigner from ssl.com](https://www.ssl.com/guide/integration-guide-testing-remote-signing-with-esigner-csc-api/).
+To use this package you need access to an CSC API.
 
 This package is developed and tested on PHP >= 7.1. Requirements of the 
 [SetaPDF-Signer](https://www.setasign.com/signer)
@@ -79,25 +86,29 @@ All classes in this package are located in the namespace `setasign\SetaPDF\Signe
 
 ### The `Client` class
 
-This class communicates directly to your CSC API. It's constructor requires the following arguments:
+This class is a kind of proxy class to the CSC API. Its constructor requires the following arguments:
 
-- `$apiUri` The base url of your csc api e.g. "https://cs-try.ssl.com/csc/v0"
+- `$apiUri` The base url of your csc api e.g. `https://cs-try.ssl.com/csc/v0`
 - `$httpClient` PSR-18 HTTP Client implementation.
 - `$requestFactory` PSR-17 HTTP Factory implementation.
 - `$streamFactory` PSR-17 HTTP Factory implementation.
 
+If you need to call an endpoint which is not covered by a proxy method, you can use the `call()` method.
 
 ### The `Module` class
 
 This is the main signature module which can be used with the [SetaPDF-Signer](https://www.setasign.com/signer)
 component. It's constructor requires the following arguments:
 
-- `$accessToken` Your oauth access token
-- `$client` Your client instance - see above 
+- `$accessToken` The access token
+- `$client` A `Client` instance - see above 
 
 ### How do I get an access token?
 
-You have to use an OAuth2 implementation like [league/oauth2-client](https://github.com/thephpleague/oauth2-client).
+An access token is returned by an authorization to the API service. 
+
+This was tested only by an OAuth2 authorization yet. You can to use an OAuth2 implementation such as 
+[league/oauth2-client](https://github.com/thephpleague/oauth2-client).
 Sample code for this can be found in "[examples/generate-token.php](examples/generate-token.php)".
 
 ### Demo
@@ -105,6 +116,9 @@ Sample code for this can be found in "[examples/generate-token.php](examples/gen
 A simple complete signature process would look like this:
 
 ```php
+$accessToken = '...COMES E.G. FROM THE OAUTH2 AUTHORIZATION...';
+$otp = '123456'; // one-time-password
+
 $httpClient = new GuzzleHttp\Client();
 // if you are using php 7.0 or 7.1
 //$httpClient = new Mjelamanov\GuzzlePsr18\Client($httpClient);
@@ -124,10 +138,6 @@ $certificates = array_map(function (string $certificate) {
     return new SetaPDF_Signer_X509_Certificate($certificate);
 }, $certificates);
 
-foreach ($certificates as $k => $certificate) {
-    file_put_contents('cert-' . $k . '.pem', $certificate->get());
-}
-
 // the first certificate is always the signing certificate
 $certificate = array_shift($certificates);
 $algorithm = $credentialInfo['key']['algo'][0];
@@ -138,16 +148,10 @@ $module = new setasign\SetaPDF\Signer\Module\CSC\Module(
 );
 $module->setSignatureAlgorithmOid($algorithm);
 $module->setCertificate($certificate);
-
-if (isset($_GET['otp'])) {
-    $module->setOtp($_GET['otp']);
-}
-if (isset($_GET['pin'])) {
-    $module->setPin($_GET['pin']);
-}
+$module->setOtp($otp);
 
 // the file to sign
-$fileToSign = __DIR__ . '/Laboratory-Report.pdf';
+$fileToSign = __DIR__ . '/assets/Laboratory-Report.pdf';
 
 // create a writer instance
 $writer = new SetaPDF_Core_Writer_File('signed.pdf');
