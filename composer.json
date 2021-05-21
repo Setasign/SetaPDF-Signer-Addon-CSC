@@ -1,6 +1,6 @@
 {
     "name": "setasign/setapdf-signer-addon-csc",
-    "description": "A SetaPDF-Signer component signature module.",
+    "description": "A SetaPDF-Signer component signature module for a CSC API.",
     "minimum-stability": "stable",
     "license": "MIT",
     "homepage": "https://github.com/Setasign/SetaPDF-Signer-Addon-CSC",
@@ -15,7 +15,7 @@
         "ext-json": "*",
         "psr/http-client": "^1.0",
         "psr/http-factory": "^1.0",
-        "setasign/setapdf-signer": "^2.0"
+        "setasign/setapdf-signer": "^2.36"
     },
     "require-dev": {
         "guzzlehttp/guzzle": "^6.5",
