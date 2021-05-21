@@ -16,7 +16,7 @@ session_start();
 $settings = require 'settings.php';
 $apiUri = $settings['apiUri'];
 
-$fileToSign = __DIR__ . '/Laboratory-Report.pdf';
+$fileToSign = __DIR__ . '/assets/Laboratory-Report.pdf';
 $resultPath = 'signed.pdf';
 
 // to create or update your access token you have to call generate-token.php first
@@ -37,6 +37,7 @@ $requestFactory = new Http\Factory\Guzzle\RequestFactory();
 $streamFactory = new Http\Factory\Guzzle\StreamFactory();
 $client = new Client($apiUri, $httpClient, $requestFactory, $streamFactory);
 
+echo '<pre>';
 $credentialIds = ($client->credentialsList($accessToken))['credentialIDs'];
 var_dump($credentialIds);
 // we just use the first credential on the list
@@ -44,14 +45,10 @@ $credentialId = $credentialIds[0];
 // fetch all informations regarding your credential id like the certificates
 $credentialInfo = $client->credentialsInfo($accessToken, $credentialId, 'chain', true, true);
 var_dump($credentialInfo);
+echo '</pre>';
 $certificates = $credentialInfo['cert']['certificates'];
-$certificates = array_map(function (string $certificate) {
-    return new SetaPDF_Signer_X509_Certificate($certificate);
-}, $certificates);
-// to cache the certificate files
-//foreach ($certificates as $k => $certificate) {
-//    file_put_contents('cert-' . $k . '.pem', $certificate->get());
-//}
+
+// INFO: YOU SHOULD CACHE THE DATA IN $credentialInfo FOR FURTHER API REQUESTS
 
 // the first certificate is always the signing certificate
 $certificate = array_shift($certificates);
@@ -62,6 +59,13 @@ $module->setCredentialId($credentialId);
 $module->setSignatureAlgorithmOid($algorithm);
 $module->setCertificate($certificate);
 $module->setExtraCertificates($certificates);
+
+if (!isset($_GET['otp']) && !isset($_GET['pin'])) {
+    echo 'No OTP nor PIN given.';
+    echo '<form><input type="text" name="otp" placeholder="OTP"> or <input type="text" name="pin" placeholder="PIN">';
+    echo '<input type="submit"/></form>';
+    die();
+}
 
 if (isset($_GET['otp'])) {
     $module->setOtp($_GET['otp']);
@@ -79,3 +83,6 @@ $document = SetaPDF_Core_Document::loadByFilename($fileToSign, $writer);
 $signer = new SetaPDF_Signer($document);
 
 $signer->sign($module);
+
+echo '<a href="data:application/pdf;base64,' . base64_encode(file_get_contents($resultPath)) . '" ' .
+    'download="' . basename($resultPath) . '">download</a><br />';

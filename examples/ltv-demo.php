@@ -16,11 +16,11 @@ session_start();
 $settings = require 'settings.php';
 $apiUri = $settings['apiUri'];
 
-$fileToSign = __DIR__ . '/Laboratory-Report.pdf';
+$fileToSign = __DIR__ . '/assets/Laboratory-Report.pdf';
 $resultPath = 'signed.pdf';
 
 $timestampingUrl = 'http://timestamping.ensuredca.com';
-$trustedCertificatesPath = __DIR__ . '/setapdf_demos@setasign_com.ca-bundle';
+$trustedCertificatesPath = __DIR__ . '/assets/setapdf_demos@setasign_com.ca-bundle';
 
 
 // to create or update your access token you have to call generate-token.php first
@@ -41,6 +41,7 @@ $requestFactory = new Http\Factory\Guzzle\RequestFactory();
 $streamFactory = new Http\Factory\Guzzle\StreamFactory();
 $client = new Client($apiUri, $httpClient, $requestFactory, $streamFactory);
 
+echo '<pre>';
 $credentialIds = ($client->credentialsList($accessToken)['credentialIDs']);
 var_dump($credentialIds);
 // we just use the first credential on the list
@@ -48,14 +49,14 @@ $credentialId = $credentialIds[0];
 // fetch all informations regarding your credential id like the certificates
 $credentialInfo = $client->credentialsInfo($accessToken, $credentialId, 'chain', true, true);
 var_dump($credentialInfo);
+echo '</pre>';
+
+// INFO: YOU SHOULD CACHE THE DATA IN $credentialInfo FOR FURTHER API REQUESTS
+
 $certificates = $credentialInfo['cert']['certificates'];
 $certificates = array_map(function (string $certificate) {
     return new SetaPDF_Signer_X509_Certificate($certificate);
 }, $certificates);
-// to cache the certificate files
-//foreach ($certificates as $k => $certificate) {
-//    file_put_contents('cert-' . $k . '.pem', $certificate->get());
-//}
 
 $certificate = array_shift($certificates);
 $algorithm = $credentialInfo['key']['algo'][0];
@@ -80,6 +81,13 @@ foreach ($vriData->getOcspResponses() as $ocspResponse) {
 }
 foreach ($vriData->getCrls() as $crl) {
     $module->addCrl($crl);
+}
+
+if (!isset($_GET['otp']) && !isset($_GET['pin'])) {
+    echo 'No OTP nor PIN given.';
+    echo '<form><input type="text" name="otp" placeholder="OTP"> or <input type="text" name="pin" placeholder="PIN">';
+    echo '<input type="submit"/></form>';
+    die();
 }
 
 if (isset($_GET['otp'])) {
@@ -147,3 +155,6 @@ $dss->addValidationRelatedInfoByFieldName(
 
 // save and finish the final document
 $document->save()->finish();
+
+echo '<a href="data:application/pdf;base64,' . base64_encode(file_get_contents($resultPath)) . '" ' .
+    'download="' . basename($resultPath) . '">download</a><br />';
