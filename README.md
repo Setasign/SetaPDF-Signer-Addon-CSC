@@ -18,7 +18,7 @@ sign your PDF documents locally.
 
 ## Known not implemented features
 
-At the moment the module do not support RSA_PSS or ECDSA as signing algorithm because of missing testing options.
+At the moment the module does not support RSA_PSS or ECDSA as signing algorithm because of missing testing options.
 Both are implemented but will throw an exception to get a chance for a test case. Please contact us at
 support@setasign.com so that we can work on a final implementation together.
 
@@ -31,7 +31,7 @@ the OTP generation by yourself - see API `credentials/sendOTP` (11.8).
 
 ## Requirements
 
-To use this package you need access to an CSC API.
+To use this package you need access to a CSC API.
 
 This package is developed and tested on PHP >= 7.1. Requirements of the 
 [SetaPDF-Signer](https://www.setasign.com/signer)
@@ -93,7 +93,7 @@ This class is a kind of proxy class to the CSC API. Its constructor requires the
 - `$requestFactory` PSR-17 HTTP Factory implementation.
 - `$streamFactory` PSR-17 HTTP Factory implementation.
 
-If you need to call an endpoint which is not covered by a proxy method, you can use the `call()` method.
+If you need to call an endpoint which is not covered by a proxy method, you can use the `call(string $path, ?string $accessToken = null, array $inputData = [])` method.
 
 ### The `Module` class
 
@@ -132,12 +132,8 @@ $credentialIds = ($client->credentialsList($accessToken)['credentialIds']);
 $credentialId = $credentialIds[0];
 // fetch all informations regarding your credential id like the certificates
 $credentialInfo = $client->credentialsInfo($accessToken, $credentialId, 'chain', true, true);
-
+// get the certificate chain
 $certificates = $credentialInfo['cert']['certificates'];
-$certificates = array_map(function (string $certificate) {
-    return new SetaPDF_Signer_X509_Certificate($certificate);
-}, $certificates);
-
 // the first certificate is always the signing certificate
 $certificate = array_shift($certificates);
 $algorithm = $credentialInfo['key']['algo'][0];
@@ -148,6 +144,7 @@ $module = new setasign\SetaPDF\Signer\Module\CSC\Module(
 );
 $module->setSignatureAlgorithmOid($algorithm);
 $module->setCertificate($certificate);
+$module->setExtraCertificates($certificates);
 $module->setOtp($otp);
 
 // the file to sign
