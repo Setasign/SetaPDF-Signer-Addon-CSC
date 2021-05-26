@@ -5,8 +5,6 @@
       <sourceFolder url="file://$MODULE_DIR$/spec" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/src" isTestSource="false" packagePrefix="setasign\SetaPDF\Signer\Module\CSC\" />
       <sourceFolder url="file://$MODULE_DIR$/tests" isTestSource="true" />
-      <excludeFolder url="file://$MODULE_DIR$/vendor/setasign/setapdf-core" />
-      <excludeFolder url="file://$MODULE_DIR$/vendor/setasign/setapdf-signer" />
       <excludeFolder url="file://$MODULE_DIR$/vendor/psr/http-message" />
       <excludeFolder url="file://$MODULE_DIR$/vendor/http-interop/http-factory-guzzle" />
       <excludeFolder url="file://$MODULE_DIR$/vendor/guzzlehttp/psr7" />
@@ -23,6 +21,9 @@
       <excludeFolder url="file://$MODULE_DIR$/vendor/psr/http-client" />
       <excludeFolder url="file://$MODULE_DIR$/vendor/phpseclib/phpseclib" />
       <excludeFolder url="file://$MODULE_DIR$/vendor/league/oauth2-client" />
+      <excludeFolder url="file://$MODULE_DIR$/vendor/setasign/setapdf-signer_ioncube_license" />
+      <excludeFolder url="file://$MODULE_DIR$/vendor/setasign/composer-ioncube-license-installer" />
+      <excludeFolder url="file://$MODULE_DIR$/vendor/setasign/setapdf-signer_eval_ioncube_php7.1" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />

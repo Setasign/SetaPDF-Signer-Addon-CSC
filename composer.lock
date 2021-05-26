@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "c8ae4095ca65665d3dc329a90a5a32a4",
+    "content-hash": "9e6251c3a12bf12c443c9ca25e7a4207",
     "packages": [
         {
             "name": "psr/http-client",
@@ -167,11 +167,52 @@
             "time": "2016-08-06T14:39:51+00:00"
         },
         {
-            "name": "setasign/setapdf-core",
+            "name": "setasign/composer-ioncube-license-installer",
+            "version": "v1.1.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/Setasign/ComposerIoncubeLicenseInstaller.git",
+                "reference": "97bcc0a4a11cd4658e07156033289380735749eb"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/Setasign/ComposerIoncubeLicenseInstaller/zipball/97bcc0a4a11cd4658e07156033289380735749eb",
+                "reference": "97bcc0a4a11cd4658e07156033289380735749eb",
+                "shasum": ""
+            },
+            "require": {
+                "composer-plugin-api": "^2.0",
+                "php": "^5.4 || ^7.0 || ^8.0"
+            },
+            "type": "composer-plugin",
+            "extra": {
+                "class": "setasign\\ComposerIoncubeLicenseInstaller\\InstallerPlugin"
+            },
+            "autoload": {
+                "psr-4": {
+                    "setasign\\ComposerIoncubeLicenseInstaller\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "description": "Installer plugin for ioncube licenses",
+            "support": {
+                "issues": "https://github.com/Setasign/ComposerIoncubeLicenseInstaller/issues",
+                "source": "https://github.com/Setasign/ComposerIoncubeLicenseInstaller/tree/v1.1.1"
+            },
+            "time": "2020-09-14T08:33:54+00:00"
+        },
+        {
+            "name": "setasign/setapdf-signer_eval_ioncube_php7.1",
             "version": "2.36.0.1597",
             "dist": {
                 "type": "zip",
-                "url": "https://www.setasign.com/downloads/2854243/SetaPDF-Core_2.36.0.1597-without-demos.zip"
+                "url": "https://www.setasign.com/downloads/2854245/SetaPDF-Signer_2.36.0.1597_Ioncubed-PHP7.1-without-demos.zip"
+            },
+            "require": {
+                "setasign/setapdf-signer_ioncube_license": "*"
             },
             "type": "library",
             "autoload": {
@@ -188,28 +229,28 @@
             "time": "2020-12-22T00:00:00+00:00"
         },
         {
-            "name": "setasign/setapdf-signer",
-            "version": "2.36.0.1597",
+            "name": "setasign/setapdf-signer_ioncube_license",
+            "version": "1.0.3073650",
             "dist": {
                 "type": "zip",
-                "url": "https://www.setasign.com/downloads/2854244/SetaPDF-Signer_2.36.0.1597-without-core.zip"
+                "url": "https://www.setasign.com/downloads/eval/11788/ioncube/SetaPDF-Signer-License.zip"
             },
             "require": {
-                "setasign/setapdf-core": "2.36.0.1597"
+                "setasign/composer-ioncube-license-installer": "*"
             },
-            "type": "library",
-            "autoload": {
-                "psr-0": {
-                    "SetaPDF_": "library/"
-                }
+            "type": "ioncube-license",
+            "extra": {
+                "licenseValidFor": [
+                    "setasign/setapdf-signer_eval_ioncube_php5",
+                    "setasign/setapdf-signer_eval_ioncube_php5.3",
+                    "setasign/setapdf-signer_eval_ioncube_php5.4",
+                    "setasign/setapdf-signer_eval_ioncube_php5.6",
+                    "setasign/setapdf-signer_eval_ioncube_php7.1"
+                ]
             },
             "license": [
                 "proprietary"
-            ],
-            "support": {
-                "email": "support@setasign.com"
-            },
-            "time": "2020-12-22T00:00:00+00:00"
+            ]
         }
     ],
     "packages-dev": [

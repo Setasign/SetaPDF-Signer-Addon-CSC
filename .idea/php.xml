@@ -17,8 +17,6 @@
   </component>
   <component name="PhpIncludePathManager">
     <include_path>
-      <path value="$PROJECT_DIR$/vendor/setasign/setapdf-core" />
-      <path value="$PROJECT_DIR$/vendor/setasign/setapdf-signer" />
       <path value="$PROJECT_DIR$/vendor/psr/http-message" />
       <path value="$PROJECT_DIR$/vendor/http-interop/http-factory-guzzle" />
       <path value="$PROJECT_DIR$/vendor/guzzlehttp/psr7" />
@@ -35,6 +33,9 @@
       <path value="$PROJECT_DIR$/vendor/psr/http-client" />
       <path value="$PROJECT_DIR$/vendor/phpseclib/phpseclib" />
       <path value="$PROJECT_DIR$/vendor/league/oauth2-client" />
+      <path value="$PROJECT_DIR$/vendor/setasign/setapdf-signer_ioncube_license" />
+      <path value="$PROJECT_DIR$/vendor/setasign/composer-ioncube-license-installer" />
+      <path value="$PROJECT_DIR$/vendor/setasign/setapdf-signer_eval_ioncube_php7.1" />
     </include_path>
   </component>
   <component name="PhpProjectSharedConfiguration" php_language_level="7.1">
