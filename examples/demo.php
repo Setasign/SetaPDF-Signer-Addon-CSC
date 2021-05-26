@@ -48,7 +48,7 @@ var_dump($credentialInfo);
 echo '</pre>';
 $certificates = $credentialInfo['cert']['certificates'];
 
-// INFO: YOU SHOULD CACHE THE DATA IN $credentialInfo FOR FURTHER API REQUESTS
+// INFO: YOU SHOULD CACHE THE DATA IN $credentialInfo FOR LESS API REQUESTS
 
 // the first certificate is always the signing certificate
 $certificate = array_shift($certificates);
@@ -63,6 +63,7 @@ $module->setExtraCertificates($certificates);
 if (!isset($_GET['otp']) && !isset($_GET['pin'])) {
     echo 'No OTP nor PIN given.';
     echo '<form><input type="text" name="otp" placeholder="OTP"> or <input type="text" name="pin" placeholder="PIN">';
+    echo ' or leave blank for implicit authorization.';
     echo '<input type="submit"/></form>';
     die();
 }
@@ -85,4 +86,4 @@ $signer = new SetaPDF_Signer($document);
 $signer->sign($module);
 
 echo '<a href="data:application/pdf;base64,' . base64_encode(file_get_contents($resultPath)) . '" ' .
-    'download="' . basename($resultPath) . '">download</a><br />';
+    'download="' . basename($resultPath) . '">download</a> | <a href="?">restart</a><br />';
