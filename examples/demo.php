@@ -13,6 +13,11 @@ require_once(__DIR__ . '/../vendor/autoload.php');
 
 session_start();
 
+if (!file_exists('settings.php')) {
+    echo 'The settings.php file is missing. See settings.php.dist for an example.';
+    die();
+}
+
 $settings = require 'settings.php';
 $apiUri = $settings['apiUri'];
 
@@ -60,10 +65,10 @@ $module->setSignatureAlgorithmOid($algorithm);
 $module->setCertificate($certificate);
 $module->setExtraCertificates($certificates);
 
-if (!isset($_GET['otp']) && !isset($_GET['pin'])) {
-    echo 'No OTP nor PIN given.';
+if ($credentialInfo['authMode'] === 'explicit' && !isset($_GET['otp']) && !isset($_GET['pin'])) {
+    // you should check the OTP and/or PIN entry in $credentialInfo for how to setup authentication exactly
+    echo 'Please enter OTP or PIN:';
     echo '<form><input type="text" name="otp" placeholder="OTP"> or <input type="text" name="pin" placeholder="PIN">';
-    echo ' or leave blank for implicit authorization.';
     echo '<input type="submit"/></form>';
     die();
 }
