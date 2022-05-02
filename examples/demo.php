@@ -47,10 +47,16 @@ $credentialIds = ($client->credentialsList($accessToken))['credentialIDs'];
 var_dump($credentialIds);
 // we just use the first credential on the list
 $credentialId = $credentialIds[0];
-// fetch all informations regarding your credential id like the certificates
+// fetch all information regarding your credential id like the certificates
 $credentialInfo = $client->credentialsInfo($accessToken, $credentialId, 'chain', true, true);
 var_dump($credentialInfo);
 echo '</pre>';
+if ($credentialInfo['authMode'] === 'oauth2code') {
+    echo 'The selected credentialId does only support oauth2code authentification.'
+        . ' A synchronous sign request is not possible - take a look at the <a href="async-demo.php">async-demo</a> instead.';
+    die();
+}
+
 $certificates = $credentialInfo['cert']['certificates'];
 
 // INFO: YOU SHOULD CACHE THE DATA IN $credentialInfo FOR LESS API REQUESTS
