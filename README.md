@@ -10,7 +10,7 @@ https://cloudsignatureconsortium.org/resources/download-api-specifications/
 At the time of writing the module is tested with the eSigner CSC API from SSL.com and the Remote Signing Service CSC API from Entrust. 
 It currently does not support all features or variances that may appear in other API implementations.
 
-For usage with ssl.com you can follow this integration guide to get a better understanding of how to setup a test 
+For usage with SSL.com you can follow this integration guide to get a better understanding of how to setup a test 
 environment and how the signature workflow works: 
 https://www.ssl.com/guide/integration-guide-testing-remote-signing-with-esigner-csc-api/
 (instead of using postman you can use this module directly and sign your PDF documents locally).
