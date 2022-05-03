@@ -283,11 +283,6 @@ class Module implements
         return $this->signatureAlgorithmOid;
     }
 
-    public function getPadesDigest(): string
-    {
-        return $this->padesModule->getDigest();
-    }
-
     /**
      * Add additional certificates which are placed into the CMS structure.
      *
@@ -319,11 +314,6 @@ class Module implements
     public function addCrl($crl)
     {
         $this->padesModule->addCrl($crl);
-    }
-
-    public function setSignatureValue(string $signatureValue)
-    {
-        $this->padesModule->setSignatureValue($signatureValue);
     }
 
     /**
