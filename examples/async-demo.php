@@ -58,42 +58,56 @@ $provider = new GenericProvider([
     'urlResourceOwnerDetails' => $oauth2Urls['urlResourceOwnerDetails'],
 ]);
 
-//var_dump($client->info());
-$credentialIds = ($client->credentialsList($accessToken))['credentialIDs'];
-//var_dump($credentialIds);
-// we just use the first credential on the list
-$credentialId = $credentialIds[0];
-
-// fetch all information regarding your credential id like the certificates
-$credentialInfo = $client->credentialsInfo($accessToken, $credentialId, 'chain', true, true);
-//    var_dump($credentialInfo);die();
-if ($credentialInfo['authMode'] !== 'oauth2code') {
-    echo 'The selected credentialId does not support oauth2code authentification.'
-        . ' A asynchronous sign request is not possible - take a look at the other demos instead.';
-    die();
-}
-
-$certificates = $credentialInfo['cert']['certificates'];
-$certificates = array_map(function (string $certificate) {
-    return new SetaPDF_Signer_X509_Certificate($certificate);
-}, $certificates);
-// to cache the certificate files
-//foreach ($certificates as $k => $certificate) {
-//    file_put_contents('cert-' . $k . '.pem', $certificate->get());
-//}
-
-// the first certificate is always the signing certificate
-$certificate = array_shift($certificates);
-
-
-$action = $_GET['action'] ?? 'preSign';
+$action = $_GET['action'] ?? 'preview';
 // if the oauth request was unsuccessful, return to preSign
-if ($action === 'sign' && $_GET['error']) {
-    $action = 'preSign';
+if ($action === 'sign' && isset($_GET['error'])) {
+    $action = 'preview';
 }
 
 switch ($action) {
+    case 'preview':
+        echo '<iframe src="?action=previewDocument" style="width: 90%; height: 90%;"></iframe><br/><br/>'
+            . '<div style="text-align: right;"><a href="?action=preSign" style="background-color: #4CAF50; border: none; color: white; padding: 15px 32px; text-align: center; text-decoration: none; display: inline-block; font-size: 16px; border-radius: 8px;">Sign</a></div>';
+        break;
+
+    case 'previewDocument':
+        header('Content-Type: application/pdf');
+        header('Content-Disposition: inline; filename="' . basename($fileToSign, '.pdf') . '.pdf"');
+        header('Expires: 0');
+        header('Cache-Control: must-revalidate, post-check=0, pre-check=0');
+        header('Pragma: public');
+        $data = file_get_contents($fileToSign);
+        header('Content-Length: ' . strlen($data));
+        echo $data;
+        flush();
+        break;
+
     case 'preSign':
+        $credentialIds = ($client->credentialsList($accessToken))['credentialIDs'];
+        // we just use the first credential on the list
+        $credentialId = $credentialIds[0];
+
+        // fetch all information regarding your credential id like the certificates
+        $credentialInfo = $client->credentialsInfo($accessToken, $credentialId, 'chain', true, true);
+        //    var_dump($credentialInfo);die();
+        if ($credentialInfo['authMode'] !== 'oauth2code') {
+            echo 'The selected credentialId does not support oauth2code authentification.'
+                . ' A asynchronous sign request is not possible - take a look at the other demos instead.';
+            die();
+        }
+
+        $certificates = $credentialInfo['cert']['certificates'];
+        $certificates = array_map(function (string $certificate) {
+            return new SetaPDF_Signer_X509_Certificate($certificate);
+        }, $certificates);
+        // to cache the certificate files
+        //foreach ($certificates as $k => $certificate) {
+        //    file_put_contents('cert-' . $k . '.pem', $certificate->get());
+        //}
+
+        // the first certificate is always the signing certificate
+        $certificate = array_shift($certificates);
+
         $signatureAlgorithmOid = $credentialInfo['key']['algo'][0];
 
         // create a writer instance
@@ -142,38 +156,15 @@ switch ($action) {
         $_SESSION[__FILE__] = [
             'tmpDocument' => $tmpDocument,
             'hashData' => $hashData,
+            'credentialID' => $credentialId,
             'module' => $module,
             'signAlgorithm' => $signAlgorithm,
             'signAlgorithmOid' => $signatureAlgorithmOid,
+            'certificates' => $certificates,
             'vriData' => $vriData,
             'oauth2state' => $provider->getState(),
-            'oauth2AuthorizationUrl' => $authorizationUrl
         ];
 
-        echo '<iframe src="?action=preview" style="width: 90%; height: 90%;"></iframe><br/><br/>'
-            . '<div style="text-align: right;"><a href="?action=oauthAuthorize" style="background-color: #4CAF50; border: none; color: white; padding: 15px 32px; text-align: center; text-decoration: none; display: inline-block; font-size: 16px; border-radius: 8px;">Sign</a></div>';
-        break;
-
-    case 'preview':
-        header('Content-Type: application/pdf');
-        header('Content-Disposition: inline; filename="' . basename($fileToSign, '.pdf') . '.pdf"');
-        header('Expires: 0');
-        header('Cache-Control: must-revalidate, post-check=0, pre-check=0');
-        header('Pragma: public');
-        $data = file_get_contents($fileToSign);
-        header('Content-Length: ' . strlen($data));
-        echo $data;
-        flush();
-        break;
-
-    case 'oauthAuthorize':
-        if (!isset($_SESSION[__FILE__]['oauth2AuthorizationUrl'])) {
-            echo 'No session data found.<hr/>If you want to restart the signature process click here: <a href="?reset=1">Restart</a>';
-            return;
-        }
-        $authorizationUrl = $_SESSION[__FILE__]['oauth2AuthorizationUrl'];
-
-        // Redirect the user to the authorization URL.
         header('Location: ' . $authorizationUrl);
         break;
 
@@ -207,7 +198,7 @@ switch ($action) {
 
         $result = $client->signaturesSignHash(
             $accessToken,
-            $credentialId,
+            $_SESSION[__FILE__]['credentialID'],
             $sad->getToken(),
             [$hashData],
             $_SESSION[__FILE__]['signAlgorithmOid'],
@@ -242,7 +233,7 @@ switch ($action) {
         $document = \SetaPDF_Core_Document::loadByFilename($tmpWriter->getPath(), $writer);
 
         // create a VRI collector instance
-        $collector = new SetaPDF_Signer_ValidationRelatedInfo_Collector(new SetaPDF_Signer_X509_Collection($certificates));
+        $collector = new SetaPDF_Signer_ValidationRelatedInfo_Collector(new SetaPDF_Signer_X509_Collection($_SESSION[__FILE__]['certificates']));
         $vriData = $collector->getByFieldName(
             $document,
             $fieldName,
