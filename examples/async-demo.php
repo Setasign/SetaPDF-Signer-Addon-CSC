@@ -143,7 +143,7 @@ switch ($action) {
             $module
         );
         if ($signAlgorithm === Digest::RSA_PSS_ALGORITHM) {
-            $signatureAlgorithmParameters = Module::fixPssPadding($this->padesModule);
+            $signatureAlgorithmParameters = Module::updateCmsForPssPadding($this->padesModule);
         }
         $hashData = base64_encode(hash($hashAlgorithm, $module->getDataToSign($tmpDocument->getHashFile()), true));
 

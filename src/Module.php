@@ -58,7 +58,7 @@ class Module implements
      * @return Asn1Element
      * @throws \SetaPDF_Exception_NotImplemented
      */
-    public static function fixPssPadding(
+    public static function updateCmsForPssPadding(
         SetaPDF_Signer_Signature_Module_Pades $padesModule
     ): Asn1Element {
         throw new \SetaPDF_Exception_NotImplemented(
@@ -363,7 +363,7 @@ class Module implements
         $signatureAlgorithmParameters = null;
 
         if ($this->signAlgorithm === Digest::RSA_PSS_ALGORITHM) {
-            $signatureAlgorithmParameters = self::fixPssPadding($this->padesModule);
+            $signatureAlgorithmParameters = self::updateCmsForPssPadding($this->padesModule);
         }
 
         $hashData = \base64_encode(hash($padesDigest, $this->padesModule->getDataToSign($tmpPath), true));
