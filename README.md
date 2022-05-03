@@ -7,14 +7,13 @@ Electronic Seals to digital sign PDF documents in pure PHP.
 The API documentation can be found on the Cloud Signature Consortium website:
 https://cloudsignatureconsortium.org/resources/download-api-specifications/
 
-At writing time the module is tested with the eSigner CSC API from SSL.com. 
+At the time of writing the module is tested with the eSigner CSC API from SSL.com and the Remote Signing Service CSC API from Entrust. 
 It currently does not support all features or variances that may appear in other API implementations.
-You can follow this integration guide to get a better understanding of how to setup a test environment and how the
-signature workflow works: 
-https://www.ssl.com/guide/integration-guide-testing-remote-signing-with-esigner-csc-api/
 
-We implemented the same workflow in this module but instead of using postman you can use the module directly and 
-sign your PDF documents locally.
+For usage with SSL.com you can follow this integration guide to get a better understanding of how to setup a test 
+environment and how the signature workflow works: 
+https://www.ssl.com/guide/integration-guide-testing-remote-signing-with-esigner-csc-api/
+(instead of using postman you can use this module directly and sign your PDF documents locally).
 
 ## Known not implemented features
 
@@ -95,70 +94,34 @@ This class is a kind of proxy class to the CSC API. Its constructor requires the
 
 If you need to call an endpoint which is not covered by a proxy method, you can use the `call(string $path, ?string $accessToken = null, array $inputData = [])` method.
 
-### The `Module` class
-
-This is the main signature module which can be used with the [SetaPDF-Signer](https://www.setasign.com/signer)
-component. It's constructor requires the following arguments:
-
-- `$accessToken` The access token
-- `$client` A `Client` instance - see above 
-
 ### How do I get an access token?
 
-An access token is returned by an authorization to the API service. 
+An access token is returned by an authorization to the API service.
 
-This was tested only by an OAuth2 authorization yet. You can to use an OAuth2 implementation such as 
+This was tested only by an OAuth2 authorization yet. You can to use an OAuth2 implementation such as
 [league/oauth2-client](https://github.com/thephpleague/oauth2-client).
 Sample code for this can be found in "[examples/generate-token.php](examples/generate-token.php)".
 
-### Demo
+### Authorization modes
 
-A simple complete signature process would look like this:
+Accessing a credential for remote signing requires an authorization from the user who owns it to control the signing
+key associated to it. 
 
-```php
-$accessToken = '...COMES E.G. FROM THE OAUTH2 AUTHORIZATION...';
-$otp = '123456'; // one-time-password
+The CSC API supports multiple authorization modes. The authorization mode also defines whether the signing process must
+be asynchronous or not. To get this information you can call `Client::credentialsInfo()` and in the key "authMode" you'll
+find one of the following authorization modes:
 
-$httpClient = new GuzzleHttp\Client();
-// if you are using php 7.0 or 7.1
-//$httpClient = new Mjelamanov\GuzzlePsr18\Client($httpClient);
-$requestFactory = new Http\Factory\Guzzle\RequestFactory();
-$streamFactory = new Http\Factory\Guzzle\StreamFactory();
+- implicit: the authorization process is managed by the remote service autonomously. Authentication factors are managed by the remote signing service provider by interacting directly with the user, and not by the signature application.
+- explicit: the authorization process is managed by the signature application, which collects authentication factors like PIN or One-Time Passwords (OTP).
+- oauth2code: the authorization process is managed by the remote service using an OAuth 2.0 mechanism based on authorization code.
 
-$client = new Client($apiUri, $httpClient, $requestFactory, $streamFactory);
+For both "implicit" and "explicit" you can use the synchronous process (see [examples/demo.php](examples/demo.php) and [examples/ltv-demo.php](examples/ltv-demo.php)).
 
-$credentialIds = ($client->credentialsList($accessToken)['credentialIds']);
-// we just use the first credential on the list
-$credentialId = $credentialIds[0];
-// fetch all informations regarding your credential id like the certificates
-$credentialInfo = $client->credentialsInfo($accessToken, $credentialId, 'chain', true, true);
-// get the certificate chain
-$certificates = $credentialInfo['cert']['certificates'];
-// the first certificate is always the signing certificate
-$certificate = array_shift($certificates);
-$algorithm = $credentialInfo['key']['algo'][0];
+For "oauth2code" you must use the asynchronous process (see [examples/demo-async.php](examples/async-demo.php)). This 
+will require an oauth2 implementation such as
+[league/oauth2-client](https://github.com/thephpleague/oauth2-client).
 
-$module = new setasign\SetaPDF\Signer\Module\CSC\Module(
-    $accessToken,
-    $client
-);
-$module->setSignatureAlgorithmOid($algorithm);
-$module->setCertificate($certificate);
-$module->setExtraCertificates($certificates);
-$module->setOtp($otp);
-
-// the file to sign
-$fileToSign = __DIR__ . '/assets/Laboratory-Report.pdf';
-
-// create a writer instance
-$writer = new SetaPDF_Core_Writer_File('signed.pdf');
-// create the document instance
-$document = SetaPDF_Core_Document::loadByFilename($fileToSign, $writer);
-
-// create the signer instance
-$signer = new SetaPDF_Signer($document);
-$signer->sign($module);
-```
+More about the authorization modes can be found in "8.2 Credential authorization" of the CSC API.
 
 ## License
 

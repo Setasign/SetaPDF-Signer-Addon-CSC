@@ -23,36 +23,35 @@ $requestFactory = new Http\Factory\Guzzle\RequestFactory();
 $streamFactory = new Http\Factory\Guzzle\StreamFactory();
 
 $client = new Client($apiUri, $httpClient, $requestFactory, $streamFactory);
-$info = $client->info();
 
-if (!in_array('oauth2code', $info['authType'])) {
-    throw new Exception('OAuth2 isn\'t supported by your CSC API.');
-}
-
-session_start();
-
+$oauth2Urls = $client->getOauth2Info();
 $provider = new GenericProvider([
     'clientId' => $settings['clientId'],
     'clientSecret' => $settings['clientSecret'],
-    'redirectUri' => $settings['oauth2redirectUrl'],
-    'urlAuthorize' => $info['oauth2'] . '/oauth2/authorize',
-    'urlAccessToken' => $info['oauth2'] . '/oauth2/token',
-    'urlResourceOwnerDetails' => $info['oauth2'] . '/oauth2/resource',
+    'redirectUri' => rtrim($settings['demoUrl'], '/') . '/generate-token.php',
+    'urlAuthorize' => $oauth2Urls['urlAuthorize'],
+    'urlAccessToken' => $oauth2Urls['urlAccessToken'],
+    'urlResourceOwnerDetails' => $oauth2Urls['urlResourceOwnerDetails'],
 ]);
+
+session_start();
 
 if (isset($_GET['reset'])) {
     $_SESSION = [];
+} elseif (isset($_SESSION['accessToken'])) {
+    $accessToken = new AccessToken($_SESSION['accessToken']);
 }
 
-if (isset($_SESSION['accessToken'])) {
-    $accessToken = new AccessToken($_SESSION['accessToken']);
-    if ($accessToken->hasExpired()) {
-        $accessToken = $provider->getAccessToken('refresh_token', [
-            'refresh_token' => $accessToken->getRefreshToken()
-        ]);
+/** @noinspection PhpStatementHasEmptyBodyInspection */
+if (isset($accessToken) && !$accessToken->hasExpired()) {
+    // do nothing - the access token is still valid
+} elseif (isset($accessToken) && $accessToken->getRefreshToken() !== null) {
+    // access token has expired, but we have refresh token
+    $accessToken = $provider->getAccessToken('refresh_token', [
+        'refresh_token' => $accessToken->getRefreshToken()
+    ]);
 
-        $_SESSION['accessToken'] = $accessToken->jsonSerialize();
-    }
+    $_SESSION['accessToken'] = $accessToken->jsonSerialize();
 } else {
 // If we don't have an authorization code then get one
     if (!isset($_GET['code'])) {
@@ -100,3 +99,5 @@ echo 'Expired in: ' . date('c', $accessToken->getExpires()) . "<br>";
 
 echo '<a href="demo.php">Go to demo.php</a><br/>';
 echo '<a href="ltv-demo.php">Go to ltv-demo.php</a><br/>';
+echo '<a href="async-demo.php">Go to async-demo.php</a><br/>';
+
