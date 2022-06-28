@@ -100,4 +100,5 @@ echo 'Expired in: ' . date('c', $accessToken->getExpires()) . "<br>";
 echo '<a href="demo.php">Go to demo.php</a><br/>';
 echo '<a href="ltv-demo.php">Go to ltv-demo.php</a><br/>';
 echo '<a href="async-demo.php">Go to async-demo.php</a><br/>';
+echo '<a href="appearance-demo.php">Go to appearance-demo.php</a><br/>';
 
