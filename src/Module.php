@@ -265,6 +265,14 @@ class Module implements
     }
 
     /**
+     * @return \SetaPDF_Signer_X509_Certificate|string
+     */
+    public function getCertificate()
+    {
+        return $this->padesModule->getCertificate();
+    }
+
+    /**
      * @param string $signatureAlgorithmOid
      */
     public function setSignatureAlgorithmOid(string $signatureAlgorithmOid)
@@ -349,7 +357,7 @@ class Module implements
     public function createSignature(SetaPDF_Core_Reader_FilePath $tmpPath)
     {
         // ensure certificate
-        $certificate = $this->padesModule->getCertificate();
+        $certificate = $this->getCertificate();
         if ($certificate === null) {
             throw new \BadMethodCallException('Missing certificate!');
         }
