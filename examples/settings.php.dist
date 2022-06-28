@@ -3,7 +3,7 @@
 return [
     'clientId' => 'your-client-id',
     'clientSecret' => 'your-client-secret',
-    'oauth2redirectUrl' => 'https://your-domain/generate-token.php',
+    'demoUrl' => 'https://your-domain/path-to-this-directory/',
     'oauth2scope' => 'service',
     'apiUri' => 'https://cs-try.ssl.com/csc/v0'
 ];

@@ -4,11 +4,12 @@ declare(strict_types=1);
 
 namespace setasign\SetaPDF\Signer\Module\CSC;
 
+use BadMethodCallException;
+use Exception;
 use Psr\Http\Client\ClientExceptionInterface;
 use Psr\Http\Client\ClientInterface;
 use Psr\Http\Message\RequestFactoryInterface;
 use Psr\Http\Message\StreamFactoryInterface;
-use SetaPDF_Signer_Signature_Module_Pades;
 
 /**
  * CSC API Client
@@ -33,14 +34,14 @@ class Client
     protected $streamFactory;
 
     /**
-     * @var SetaPDF_Signer_Signature_Module_Pades Internal pades module.
-     */
-    protected $padesModule;
-
-    /**
      * @var string
      */
     protected $apiUri;
+
+    /**
+     * @var array|null
+     */
+    protected $info;
 
     /**
      * Client constructor.
@@ -60,6 +61,33 @@ class Client
         $this->httpClient = $httpClient;
         $this->requestFactory = $requestFactory;
         $this->streamFactory = $streamFactory;
+    }
+
+    /**
+     * Helper method to fetch the oauth2 url endpoints.
+     *
+     * @return array
+     * @throws ClientExceptionInterface
+     */
+    public function getOauth2Info(): array
+    {
+        $info = $this->info();
+        if (!\array_key_exists('oauth2', $info) || $info['oauth2'] === '') {
+            throw new BadMethodCallException('OAuth2 isn\'t supported by your CSC API.');
+        }
+
+        // this should contain the base URI of the OAuth 2.0 authorization server endpoint
+        $baseUrl = $info['oauth2'];
+        // some endpoints seem to ignore the official documentation for oauth2 value, so we try to fix this here
+        if (strpos($baseUrl, '/oauth2/authorize') !== false) {
+            $baseUrl = substr($info['oauth2'], 0, -strlen('/oauth2/authorize'));
+        }
+
+        return [
+            'urlAuthorize' => $baseUrl . '/oauth2/authorize',
+            'urlAccessToken' => $baseUrl . '/oauth2/token',
+            'urlResourceOwnerDetails' => $baseUrl . '/oauth2/resource'
+        ];
     }
 
     /**
@@ -126,6 +154,8 @@ class Client
      * Returns information about the remote service and the list of the API methods it supports.
      * This method SHALL be implemented by any remote service conforming to this specification.
      *
+     * Note: the result of this method is memoized.
+     *
      * @param string|null $lang
      * @return array
      * @throws ClientExceptionInterface
@@ -133,11 +163,14 @@ class Client
      */
     public function info(?string $lang = null): array
     {
-        $inputData = [];
-        if ($lang !== null) {
-            $inputData['lang'] = $lang;
+        if ($this->info === null || !\array_key_exists($lang, $this->info)) {
+            $inputData = [];
+            if ($lang !== null) {
+                $inputData['lang'] = $lang;
+            }
+            $this->info[$lang ?? 'none'] = $this->call('/info', null, $inputData);
         }
-        return $this->call('/info', null, $inputData);
+        return $this->info[$lang ?? 'none'];
     }
 
     /**
