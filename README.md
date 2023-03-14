@@ -63,7 +63,7 @@ Add following to your composer.json:
 ```json
 {
     "require": {
-        "setasign/setapdf-signer-addon-csc": "dev-master"
+        "setasign/setapdf-signer-addon-csc": "^1.1"
     },
     "repositories": [
         {
