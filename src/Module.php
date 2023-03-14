@@ -11,16 +11,13 @@ namespace setasign\SetaPDF\Signer\Module\CSC;
 
 use InvalidArgumentException;
 use SetaPDF_Core_Reader_FilePath;
-use SetaPDF_Core_Type_Dictionary;
-use SetaPDF_Core_Document as Document;
 use SetaPDF_Signer_Asn1_Element as Asn1Element;
 use SetaPDF_Signer_Digest as Digest;
-use SetaPDF_Signer_Asn1_Oid as Asn1Oid;
-use SetaPDF_Signer_Exception;
 use SetaPDF_Signer_Signature_DictionaryInterface;
 use SetaPDF_Signer_Signature_DocumentInterface;
 use SetaPDF_Signer_Signature_Module_ModuleInterface;
 use SetaPDF_Signer_Signature_Module_Pades;
+use SetaPDF_Signer_Signature_Module_PadesProxyTrait;
 
 /**
  * Class Module
@@ -32,6 +29,8 @@ class Module implements
     SetaPDF_Signer_Signature_DictionaryInterface,
     SetaPDF_Signer_Signature_DocumentInterface
 {
+    use SetaPDF_Signer_Signature_Module_PadesProxyTrait;
+
     public static function findHashAndSignAlgorithm(string $signatureAlgorithmOid): array
     {
         $found = false;
@@ -191,11 +190,6 @@ class Module implements
     protected $client;
 
     /**
-     * @var SetaPDF_Signer_Signature_Module_Pades Internal pades module.
-     */
-    protected $padesModule;
-
-    /**
      * @var string|null
      */
     protected $accessToken;
@@ -237,7 +231,6 @@ class Module implements
     ) {
         $this->accessToken = $accessToken;
         $this->client = $client;
-        $this->padesModule = new SetaPDF_Signer_Signature_Module_Pades();
     }
 
     public function setCredentialId(string $credentialId): void
@@ -256,29 +249,12 @@ class Module implements
     }
 
     /**
-     * @param $certificate
-     * @throws \SetaPDF_Signer_Asn1_Exception
-     */
-    public function setCertificate($certificate)
-    {
-        $this->padesModule->setCertificate($certificate);
-    }
-
-    /**
-     * @return \SetaPDF_Signer_X509_Certificate|string
-     */
-    public function getCertificate()
-    {
-        return $this->padesModule->getCertificate();
-    }
-
-    /**
      * @param string $signatureAlgorithmOid
      */
     public function setSignatureAlgorithmOid(string $signatureAlgorithmOid)
     {
         ['hashAlgorithm' => $hashAlgorithm, 'signAlgorithm' => $signAlgorithm] = self::findHashAndSignAlgorithm($signatureAlgorithmOid);
-        $this->padesModule->setDigest($hashAlgorithm);
+        $this->_getPadesModule()->setDigest($hashAlgorithm);
         $this->signAlgorithm = $signAlgorithm;
         $this->signatureAlgorithmOid = $signatureAlgorithmOid;
     }
@@ -289,66 +265,6 @@ class Module implements
     public function getSignatureAlgorithmOid(): ?string
     {
         return $this->signatureAlgorithmOid;
-    }
-
-    /**
-     * Add additional certificates which are placed into the CMS structure.
-     *
-     * @param array|\SetaPDF_Signer_X509_Collection $extraCertificates PEM encoded certificates or pathes to PEM encoded
-     *                                                                 certificates.
-     * @throws \SetaPDF_Signer_Asn1_Exception
-     */
-    public function setExtraCertificates($extraCertificates)
-    {
-        $this->padesModule->setExtraCertificates($extraCertificates);
-    }
-
-    /**
-     * Adds an OCSP response which will be embedded in the CMS structure.
-     *
-     * @param string|\SetaPDF_Signer_Ocsp_Response $ocspResponse DER encoded OCSP response or OCSP response instance.
-     * @throws SetaPDF_Signer_Exception
-     */
-    public function addOcspResponse($ocspResponse)
-    {
-        $this->padesModule->addOcspResponse($ocspResponse);
-    }
-
-    /**
-     * Adds an CRL which will be embedded in the CMS structure.
-     *
-     * @param string|\SetaPDF_Signer_X509_Crl $crl
-     */
-    public function addCrl($crl)
-    {
-        $this->padesModule->addCrl($crl);
-    }
-
-    /**
-     * @inheritDoc
-     */
-    public function updateSignatureDictionary(SetaPDF_Core_Type_Dictionary $dictionary)
-    {
-        $this->padesModule->updateSignatureDictionary($dictionary);
-    }
-
-    /**
-     * @inheritDoc
-     */
-    public function updateDocument(Document $document)
-    {
-        $this->padesModule->updateDocument($document);
-    }
-
-    /**
-     * Get the complete Cryptographic Message Syntax structure.
-     *
-     * @return Asn1Element
-     * @throws SetaPDF_Signer_Exception
-     */
-    public function getCms()
-    {
-        return $this->padesModule->getCms();
     }
 
     /**
@@ -366,15 +282,16 @@ class Module implements
             throw new \BadMethodCallException('Missing signature algorithm!');
         }
 
+        $module = $this->_getPadesModule();
         // get the hash data from the module
-        $padesDigest = $this->padesModule->getDigest();
+        $padesDigest = $module->getDigest();
         $signatureAlgorithmParameters = null;
 
         if ($this->signAlgorithm === Digest::RSA_PSS_ALGORITHM) {
-            $signatureAlgorithmParameters = self::updateCmsForPssPadding($this->padesModule);
+            $signatureAlgorithmParameters = self::updateCmsForPssPadding($module);
         }
 
-        $hashData = \base64_encode(hash($padesDigest, $this->padesModule->getDataToSign($tmpPath), true));
+        $hashData = \base64_encode(hash($padesDigest, $module->getDataToSign($tmpPath), true));
 
         $SAD = $this->client->credentialsAuthorize(
             $this->accessToken,
@@ -400,8 +317,8 @@ class Module implements
         }
 
         // pass it to the module
-        $this->padesModule->setSignatureValue($signatureValue);
+        $module->setSignatureValue($signatureValue);
 
-        return (string) $this->padesModule->getCms();
+        return (string) $module->getCms();
     }
 }
