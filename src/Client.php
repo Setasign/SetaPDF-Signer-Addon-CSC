@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace setasign\SetaPDF\Signer\Module\CSC;
 
 use BadMethodCallException;
-use Exception;
 use Psr\Http\Client\ClientExceptionInterface;
 use Psr\Http\Client\ClientInterface;
 use Psr\Http\Message\RequestFactoryInterface;
@@ -98,7 +97,7 @@ class Client
      * @param int $depth
      * @param int $options
      * @return mixed
-     * @throws Exception
+     * @throws ClientException
      */
     protected function json_decode(string $json, bool $assoc = true, int $depth = 512, int $options = 0)
     {
@@ -108,7 +107,7 @@ class Client
         $data = @\json_decode($json, $assoc, $depth, $options);
 
         if (\json_last_error() !== JSON_ERROR_NONE) {
-            throw new Exception(\sprintf(
+            throw new \InvalidArgumentException(\sprintf(
                 'Unable to decode JSON: %s',
                 \json_last_error_msg()
             ));
@@ -123,7 +122,7 @@ class Client
      * @param array $inputData
      * @return array
      * @throws ClientExceptionInterface
-     * @throws Exception
+     * @throws ClientException
      */
     public function call(string $path, ?string $accessToken = null, array $inputData = []): array
     {
@@ -144,7 +143,8 @@ class Client
 
         $response = $this->httpClient->sendRequest($request);
         if ($response->getStatusCode() !== 200) {
-            throw new Exception('Error on ' . $path . ': ' . $response->getBody());
+            // $body in the message is kept for BC, don't rely on it but use $e->getData() instead!
+            throw new ClientException('Error on ' . $path . ': ' . $response->getBody(), $response);
         }
 
         return $this->json_decode((string) $response->getBody());
@@ -183,7 +183,7 @@ class Client
      * @param string|null $pageToken
      * @param string|null $clientData
      * @return array
-     * @throws ClientExceptionInterface
+     * @throws ClientExceptionInterface|ClientException
      * @see CSC API 11.4 /credentials/list
      */
     public function credentialsList(
@@ -222,7 +222,7 @@ class Client
      * @param string|null $lang
      * @param string|null $clientData
      * @return array
-     * @throws ClientExceptionInterface
+     * @throws ClientExceptionInterface|ClientException
      * @see CSC API 11.5 /credentials/info
      */
     public function credentialsInfo(
@@ -268,7 +268,7 @@ class Client
      * @param string $credentialID
      * @param string|null $clientData
      * @return array
-     * @throws ClientExceptionInterface
+     * @throws ClientExceptionInterface|ClientException
      * @see CSC API 11.8 /credentials/sendOTP
      */
     public function credentialsSendOTP(string $accessToken, string $credentialID, ?string $clientData = null): array
@@ -297,7 +297,7 @@ class Client
      * @param string|null $description
      * @param string|null $clientData
      * @return array
-     * @throws ClientExceptionInterface
+     * @throws ClientExceptionInterface|ClientException
      * @see CSC API 11.6 /credentials/authorize
      */
     public function credentialsAuthorize(
@@ -343,7 +343,7 @@ class Client
      * @param string|null $signAlgoParams
      * @param string|null $clientData
      * @return array
-     * @throws ClientExceptionInterface
+     * @throws ClientExceptionInterface|ClientException
      * @see CSC API 11.9 /signatures/signHash
      */
     public function signaturesSignHash(

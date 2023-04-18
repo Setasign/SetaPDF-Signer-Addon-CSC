@@ -1,5 +1,7 @@
 <?php
 
+use League\OAuth2\Client\OptionProvider\OptionProviderInterface;
+use League\OAuth2\Client\Provider\AbstractProvider;
 use League\OAuth2\Client\Provider\GenericProvider;
 use League\OAuth2\Client\Token\AccessToken;
 use setasign\SetaPDF\Signer\Module\CSC\Client;
@@ -32,7 +34,25 @@ $provider = new GenericProvider([
     'urlAuthorize' => $oauth2Urls['urlAuthorize'],
     'urlAccessToken' => $oauth2Urls['urlAccessToken'],
     'urlResourceOwnerDetails' => $oauth2Urls['urlResourceOwnerDetails'],
-]);
+]
+/*
+ // If your OAuth endpoint requires a JSON document instead of a form-encoded document pass following "optionProvider"
+ // to the GenericProvider constructor:
+ , [
+    'optionProvider' => new class implements OptionProviderInterface {
+        public function getAccessTokenOptions($method, array $params)
+        {
+            $options = ['headers' => ['content-type' => 'application/json']];
+
+            if ($method === AbstractProvider::METHOD_POST) {
+                $options['body'] = json_encode($params);
+            }
+
+            return $options;
+        }
+    }
+]*/
+);
 
 session_start();
 
