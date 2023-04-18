@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use setasign\SetaPDF\Signer\Module\CSC\Client;
+use setasign\SetaPDF\Signer\Module\CSC\ClientException;
 use setasign\SetaPDF\Signer\Module\CSC\Module;
 
 ini_set('display_errors', '1');
@@ -93,8 +94,19 @@ $document = SetaPDF_Core_Document::loadByFilename($fileToSign, $writer);
 
 // create the signer instance
 $signer = new SetaPDF_Signer($document);
-
-$signer->sign($module);
+try {
+    $signer->sign($module);
+} catch (ClientException $e) {
+    echo 'An error occured:';
+    echo $e->getMessage() . ': ' . $e->getResponse()->getBody();
+    echo '<br/><a href="?">restart</a>';
+    die();
+} catch (\Exception $e) {
+    echo 'An error occured:';
+    echo $e->getMessage();
+    echo '<br/><a href="?">restart</a>';
+    die();
+}
 
 echo '<a href="data:application/pdf;base64,' . base64_encode(file_get_contents($resultPath)) . '" ' .
     'download="' . basename($resultPath) . '">download</a> | <a href="?">restart</a><br />';

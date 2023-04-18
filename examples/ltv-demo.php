@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use setasign\SetaPDF\Signer\Module\CSC\Client;
+use setasign\SetaPDF\Signer\Module\CSC\ClientException;
 use setasign\SetaPDF\Signer\Module\CSC\Module;
 
 ini_set('display_errors', '1');
@@ -26,6 +27,7 @@ $resultPath = 'signed.pdf';
 
 $timestampingUrl = 'http://ts.ssl.com';
 $trustedCertificatesPath = __DIR__ . '/assets/SSL.com.ca-bundle';
+$otherTrustedCertificatePaths = [__DIR__ . '/assets/SSL.com.dev-ca.cer'];
 
 // to create or update your access token you have to call generate-token.php first
 if (!isset($_SESSION['accessToken']['access_token'])) {
@@ -82,6 +84,11 @@ $module->setExtraCertificates($certificates);
 // create a collection of trusted certificats:
 $trustedCertificates = new SetaPDF_Signer_X509_Collection($certificates[count($certificates) - 1]);
 $trustedCertificates->add(SetaPDF_Signer_Pem::extractFromFile($trustedCertificatesPath));
+// sadly not all CSC API implementations return the full chain (in our tests e.g. SSL.com), so we have to
+// add a trusted root on our own:
+foreach ($otherTrustedCertificatePaths as $otherTrustedCertificatePath) {
+    $trustedCertificates->addFromFile($otherTrustedCertificatePath);
+}
 
 // create a collector instance
 $collector = new SetaPDF_Signer_ValidationRelatedInfo_Collector($trustedCertificates);
@@ -128,7 +135,19 @@ $signatureField = $signer->addSignatureField();
 // ...this is needed to add validation related information later
 $signer->setSignatureFieldName($signatureField->getQualifiedName());
 
-$signer->sign($module);
+try {
+    $signer->sign($module);
+} catch (ClientException $e) {
+    echo 'An error occured:';
+    echo $e->getMessage() . ': ' . $e->getResponse()->getBody();
+    echo '<br/><a href="?">restart</a>';
+    die();
+} catch (\Exception $e) {
+    echo 'An error occured:';
+    echo $e->getMessage();
+    echo '<br/><a href="?">restart</a>';
+    die();
+}
 
 // create a new instance
 $document = SetaPDF_Core_Document::loadByFilename($tmpWriter->getPath(), $writer);
