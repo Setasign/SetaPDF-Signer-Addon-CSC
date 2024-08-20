@@ -7,7 +7,8 @@ Electronic Seals to digital sign PDF documents in pure PHP.
 The API documentation can be found on the Cloud Signature Consortium website:
 https://cloudsignatureconsortium.org/resources/download-api-specifications/
 
-At the time of writing the module is tested with the eSigner CSC API from SSL.com and the Remote Signing Service CSC API from Entrust. 
+At the time of writing the module is tested with the eSigner CSC API from SSL.com (v0) and the Remote Signing Service 
+CSC API from Entrust (v0).
 It currently does not support all features or variances that may appear in other API implementations.
 
 For usage with SSL.com you can follow this integration guide to get a better understanding of how to setup a test 
@@ -30,7 +31,7 @@ the OTP generation by yourself - see API `credentials/sendOTP` (11.8).
 
 ## Requirements
 
-To use this package you need access to a CSC API.
+To use this package you need access to a CSC API (v0).
 
 This package is developed and tested on PHP >= 7.1. Requirements of the 
 [SetaPDF-Signer](https://www.setasign.com/signer)
