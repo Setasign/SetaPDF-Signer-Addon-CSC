@@ -33,24 +33,14 @@ the OTP generation by yourself - see API `credentials/sendOTP` (11.8).
 
 To use this package you need access to a CSC API (v0).
 
-This package is developed and tested on PHP >= 7.1. Requirements of the 
+This package is developed and tested on PHP >= 7.3 up to PHP 8.5. Requirements of the 
 [SetaPDF-Signer](https://www.setasign.com/signer)
 component can be found [here](https://manuals.setasign.com/setapdf-signer-manual/getting-started/#index-1).
 
 We're using [PSR-17 (HTTP Factories)](https://www.php-fig.org/psr/psr-17/) and 
 [PSR-18 (HTTP Client)](https://www.php-fig.org/psr/psr-18/) for the requests. So you'll need an implementation of 
-these. We recommend using Guzzle.
+these. We recommend using Guzzle:
 
-### For PHP 7.1
-```
-    "require" : {
-        "guzzlehttp/guzzle": "^6.5",
-        "http-interop/http-factory-guzzle": "^1.0",
-        "mjelamanov/psr18-guzzle": "^1.3"
-    }
-```
-
-### For >= PHP 7.2
 ```
     "require" : {
         "guzzlehttp/guzzle": "^7.0",
@@ -64,7 +54,7 @@ Add following to your composer.json:
 ```json
 {
     "require": {
-        "setasign/setapdf-signer-addon-csc": "^1.1"
+        "setasign/setapdf-signer-addon-csc": "^1.2"
     },
     "repositories": [
         {
