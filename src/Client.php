@@ -87,6 +87,8 @@ class Client
             $baseUrl = \substr($info['oauth2'], 0, -\strlen('/oauth2/authorize'));
         }
 
+        $baseUrl = \rtrim($baseUrl, '/');
+
         return [
             'urlAuthorize' => $baseUrl . '/oauth2/authorize',
             'urlAccessToken' => $baseUrl . '/oauth2/token',
