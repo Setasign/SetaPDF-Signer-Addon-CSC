@@ -5,10 +5,16 @@ declare(strict_types=1);
 use setasign\SetaPDF\Signer\Module\CSC\Client;
 use setasign\SetaPDF\Signer\Module\CSC\ClientException;
 use setasign\SetaPDF\Signer\Module\CSC\Module;
-
-ini_set('display_errors', '1');
-ini_set('display_startup_errors', '1');
-error_reporting(E_ALL);
+use setasign\SetaPDF2\Core\Document;
+use setasign\SetaPDF2\Core\Writer\FileWriter;
+use setasign\SetaPDF2\Core\Writer\TempFileWriter;
+use setasign\SetaPDF2\Signer\DocumentSecurityStore;
+use setasign\SetaPDF2\Signer\PemHelper;
+use setasign\SetaPDF2\Signer\Signer;
+use setasign\SetaPDF2\Signer\Timestamp\Module\Rfc3161\Curl;
+use setasign\SetaPDF2\Signer\ValidationRelatedInfo\Collector;
+use setasign\SetaPDF2\Signer\X509\Certificate;
+use setasign\SetaPDF2\Signer\X509\Collection;
 
 require_once(__DIR__ . '/../vendor/autoload.php');
 
@@ -42,7 +48,6 @@ if (!isset($_SESSION['accessToken']['expires']) || $_SESSION['accessToken']['exp
 $accessToken = $_SESSION['accessToken']['access_token'];
 
 $httpClient = new GuzzleHttp\Client();
-$httpClient = new Mjelamanov\GuzzlePsr18\Client($httpClient);
 $requestFactory = new Http\Factory\Guzzle\RequestFactory();
 $streamFactory = new Http\Factory\Guzzle\StreamFactory();
 $client = new Client($apiUri, $httpClient, $requestFactory, $streamFactory);
@@ -66,8 +71,8 @@ if ($credentialInfo['authMode'] === 'oauth2code') {
 }
 
 $certificates = $credentialInfo['cert']['certificates'];
-$certificates = array_map(function (string $certificate) {
-    return new SetaPDF_Signer_X509_Certificate($certificate);
+$certificates = array_map(static function (string $certificate) {
+    return new Certificate($certificate);
 }, $certificates);
 
 $certificate = array_shift($certificates);
@@ -82,8 +87,8 @@ $module->setCertificate($certificate);
 $module->setExtraCertificates($certificates);
 
 // create a collection of trusted certificats:
-$trustedCertificates = new SetaPDF_Signer_X509_Collection($certificates[count($certificates) - 1]);
-$trustedCertificates->add(SetaPDF_Signer_Pem::extractFromFile($trustedCertificatesPath));
+$trustedCertificates = new Collection($certificates[count($certificates) - 1]);
+$trustedCertificates->add(PemHelper::extractFromFile($trustedCertificatesPath));
 // sadly not all CSC API implementations return the full chain (in our tests e.g. SSL.com), so we have to
 // add a trusted root on our own:
 foreach ($otherTrustedCertificatePaths as $otherTrustedCertificatePath) {
@@ -91,7 +96,7 @@ foreach ($otherTrustedCertificatePaths as $otherTrustedCertificatePath) {
 }
 
 // create a collector instance
-$collector = new SetaPDF_Signer_ValidationRelatedInfo_Collector($trustedCertificates);
+$collector = new Collector($trustedCertificates);
 $vriData = $collector->getByCertificate($certificate);
 foreach ($vriData->getOcspResponses() as $ocspResponse) {
     $module->addOcspResponse($ocspResponse);
@@ -116,18 +121,18 @@ if (isset($_GET['pin'])) {
 }
 
 // create a writer instance
-$writer = new SetaPDF_Core_Writer_File($resultPath);
-$tmpWriter = new SetaPDF_Core_Writer_TempFile();
+$writer = new FileWriter($resultPath);
+$tmpWriter = new TempFileWriter();
 // create the document instance
-$document = SetaPDF_Core_Document::loadByFilename($fileToSign, $tmpWriter);
+$document = Document::loadByFilename($fileToSign, $tmpWriter);
 
 // create the signer instance
-$signer = new SetaPDF_Signer($document);
+$signer = new Signer($document);
 // because of the timestamp and VRI data we need more space for the signature container
 $signer->setSignatureContentLength(40000);
 
 // setup a timestamp module
-$tsModule = new SetaPDF_Signer_Timestamp_Module_Rfc3161_Curl($timestampingUrl);
+$tsModule = new Curl($timestampingUrl);
 $signer->setTimestampModule($tsModule);
 
 // add a signature field manually to get access to its name
@@ -150,10 +155,10 @@ try {
 }
 
 // create a new instance
-$document = SetaPDF_Core_Document::loadByFilename($tmpWriter->getPath(), $writer);
+$document = Document::loadByFilename($tmpWriter->getPath(), $writer);
 
 // create a VRI collector instance
-$collector = new SetaPDF_Signer_ValidationRelatedInfo_Collector($trustedCertificates);
+$collector = new Collector($trustedCertificates);
 // Use IPv4 to bypass an issue at http://ocsp.ensuredca.com
 //$collector->getOcspClient()->setCurlOption([
 //    CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4
@@ -163,7 +168,7 @@ $collector = new SetaPDF_Signer_ValidationRelatedInfo_Collector($trustedCertific
 $vriData = $collector->getByFieldName(
     $document,
     $signatureField->getQualifiedName(),
-    SetaPDF_Signer_ValidationRelatedInfo_Collector::SOURCE_OCSP_OR_CRL,
+    Collector::SOURCE_OCSP_OR_CRL,
     null,
     null,
     $vriData // pass the previously gathered VRI data
@@ -175,7 +180,7 @@ $vriData = $collector->getByFieldName(
 //}
 
 // and add it to the document.
-$dss = new SetaPDF_Signer_DocumentSecurityStore($document);
+$dss = new DocumentSecurityStore($document);
 $dss->addValidationRelatedInfoByFieldName(
     $signatureField->getQualifiedName(),
     $vriData->getCrls(),

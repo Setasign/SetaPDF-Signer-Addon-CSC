@@ -1,23 +1,25 @@
 <?php
 
-declare(strict_types=1);
-
 /**
- * @copyright Copyright (c) 2021 Setasign GmbH & Co. KG (https://www.setasign.com)
+ * @copyright Copyright (c) 2026 Setasign GmbH & Co. KG (https://www.setasign.com)
  * @license   http://opensource.org/licenses/mit-license The MIT License
  */
+
+declare(strict_types=1);
 
 namespace setasign\SetaPDF\Signer\Module\CSC;
 
 use InvalidArgumentException;
-use SetaPDF_Core_Reader_FilePath;
-use SetaPDF_Signer_Asn1_Element as Asn1Element;
-use SetaPDF_Signer_Digest as Digest;
-use SetaPDF_Signer_Signature_DictionaryInterface;
-use SetaPDF_Signer_Signature_DocumentInterface;
-use SetaPDF_Signer_Signature_Module_ModuleInterface;
-use SetaPDF_Signer_Signature_Module_Pades;
-use SetaPDF_Signer_Signature_Module_PadesProxyTrait;
+use setasign\SetaPDF2\Core\Reader\FilePath as FilePath;
+use setasign\SetaPDF2\NotImplementedException;
+use setasign\SetaPDF2\Signer\Asn1\Element as Asn1Element;
+use setasign\SetaPDF2\Signer\Asn1\Exception as Asn1Exception;
+use setasign\SetaPDF2\Signer\Digest;
+use setasign\SetaPDF2\Signer\Signature\Module\Pades;
+use setasign\SetaPDF2\Signer\Signature\Module\DictionaryInterface;
+use setasign\SetaPDF2\Signer\Signature\Module\DocumentInterface;
+use setasign\SetaPDF2\Signer\Signature\Module\ModuleInterface;
+use setasign\SetaPDF2\Signer\Signature\Module\PadesProxyTrait;
 
 /**
  * Class Module
@@ -25,11 +27,11 @@ use SetaPDF_Signer_Signature_Module_PadesProxyTrait;
  * @see https://cloudsignatureconsortium.org/wp-content/uploads/2020/01/CSC_API_V1_1.0.4.0.pdf
  */
 class Module implements
-    SetaPDF_Signer_Signature_Module_ModuleInterface,
-    SetaPDF_Signer_Signature_DictionaryInterface,
-    SetaPDF_Signer_Signature_DocumentInterface
+    ModuleInterface,
+    DictionaryInterface,
+    DocumentInterface
 {
-    use SetaPDF_Signer_Signature_Module_PadesProxyTrait;
+    use PadesProxyTrait;
 
     public static function findHashAndSignAlgorithm(string $signatureAlgorithmOid): array
     {
@@ -53,14 +55,14 @@ class Module implements
     /**
      * Update CMS SignatureAlgorithmIdentifier according to Probabilistic Signature Scheme (RSASSA-PSS)
      *
-     * @param SetaPDF_Signer_Signature_Module_Pades $padesModule
+     * @param Pades $padesModule
      * @return Asn1Element
-     * @throws \SetaPDF_Exception_NotImplemented
+     * @throws NotImplementedException
      */
     public static function updateCmsForPssPadding(
-        SetaPDF_Signer_Signature_Module_Pades $padesModule
+        Pades $padesModule
     ): Asn1Element {
-        throw new \SetaPDF_Exception_NotImplemented(
+        throw new NotImplementedException(
             'Signatures with PSS padding were not tested yet. Please contact support@setasign.com with details of your CSC API.'
         );
 
@@ -68,9 +70,9 @@ class Module implements
 //
 //        // let's use a salt length of the same size as the hash function output
 //        $saltLength = 256 / 8;
-//        if ($padesDigest === \SetaPDF_Signer_Digest::SHA_384) {
+//        if ($padesDigest === Digest::SHA_384) {
 //            $saltLength = 384 / 8;
-//        } elseif ($padesDigest === \SetaPDF_Signer_Digest::SHA_512) {
+//        } elseif ($padesDigest === Digest::SHA_512) {
 //            $saltLength = 512 / 8;
 //        }
 //
@@ -146,7 +148,7 @@ class Module implements
 
     public static function fixEccSignatures(string $signatureValue): string
     {
-        throw new \SetaPDF_Exception_NotImplemented(
+        throw new NotImplementedException(
             'EC signatures were not tested yet. Please contact support@setasign.com with details of your CSC API.'
         );
         // Let's ensure that the ECDSA-Sig-Value is DER encoded.
@@ -155,7 +157,7 @@ class Module implements
 //        try {
 //            Asn1Element::parse($signatureValue);
 //
-//        } catch (\SetaPDF_Signer_Asn1_Exception $e) {
+//        } catch (Asn1Exception $e) {
 //            /* According to RFC5753 2.1.1:
 //             *  - signature MUST contain the DER encoding (as an octet string) of a value of the ASN.1 type
 //             *    ECDSA-Sig-Value (see Section 7.2).
@@ -270,7 +272,7 @@ class Module implements
     /**
      * @inheritDoc
      */
-    public function createSignature(SetaPDF_Core_Reader_FilePath $tmpPath)
+    public function createSignature(FilePath $tmpPath)
     {
         // ensure certificate
         $certificate = $this->getCertificate();
@@ -291,7 +293,7 @@ class Module implements
             $signatureAlgorithmParameters = self::updateCmsForPssPadding($module);
         }
 
-        $hashData = \base64_encode(hash($padesDigest, $module->getDataToSign($tmpPath), true));
+        $hashData = \base64_encode(\hash($padesDigest, $module->getDataToSign($tmpPath), true));
 
         $SAD = $this->client->credentialsAuthorize(
             $this->accessToken,

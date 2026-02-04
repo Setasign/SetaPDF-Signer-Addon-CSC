@@ -1,5 +1,10 @@
 <?php
 
+/**
+ * @copyright Copyright (c) 2026 Setasign GmbH & Co. KG (https://www.setasign.com)
+ * @license   http://opensource.org/licenses/mit-license The MIT License
+ */
+
 declare(strict_types=1);
 
 namespace setasign\SetaPDF\Signer\Module\CSC;
@@ -78,8 +83,8 @@ class Client
         // this should contain the base URI of the OAuth 2.0 authorization server endpoint
         $baseUrl = $info['oauth2'];
         // some endpoints seem to ignore the official documentation for oauth2 value, so we try to fix this here
-        if (strpos($baseUrl, '/oauth2/authorize') !== false) {
-            $baseUrl = substr($info['oauth2'], 0, -strlen('/oauth2/authorize'));
+        if (\strpos($baseUrl, '/oauth2/authorize') !== false) {
+            $baseUrl = \substr($info['oauth2'], 0, -\strlen('/oauth2/authorize'));
         }
 
         return [
@@ -126,7 +131,7 @@ class Client
      */
     public function call(string $path, ?string $accessToken = null, array $inputData = []): array
     {
-        if (count($inputData) === 0) {
+        if (\count($inputData) === 0) {
             $inputData = '{}';
         } else {
             $inputData = \json_encode($inputData);
@@ -311,7 +316,7 @@ class Client
     ): array {
         $inputData = [
             'credentialID' => $credentialID,
-            'numSignatures' => count($hash),
+            'numSignatures' => \count($hash),
             'hash' => $hash,
         ];
         if ($PIN !== null) {
@@ -360,13 +365,12 @@ class Client
             'credentialID' => $credentialID,
             'SAD' => $SAD,
             'hash' => $hash,
+            'signAlgo' => $signAlgo
         ];
         if ($hashAlgo !== null) {
             $inputData['hashAlgo'] = $hashAlgo;
         }
-        if ($signAlgo !== null) {
-            $inputData['signAlgo'] = $signAlgo;
-        }
+
         if ($signAlgoParams !== null) {
             $inputData['signAlgoParams'] = $signAlgoParams;
         }

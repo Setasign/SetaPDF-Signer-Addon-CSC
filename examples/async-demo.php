@@ -5,13 +5,21 @@ declare(strict_types=1);
 use League\OAuth2\Client\OptionProvider\OptionProviderInterface;
 use League\OAuth2\Client\Provider\AbstractProvider;
 use League\OAuth2\Client\Provider\GenericProvider;
-use SetaPDF_Signer_Digest as Digest;
+use setasign\SetaPDF2\Signer\Digest;
 use setasign\SetaPDF\Signer\Module\CSC\Client;
 use setasign\SetaPDF\Signer\Module\CSC\Module;
-
-ini_set('display_errors', '1');
-ini_set('display_startup_errors', '1');
-error_reporting(E_ALL);
+use setasign\SetaPDF2\Core\Document;
+use setasign\SetaPDF2\Core\Reader\FileReader;
+use setasign\SetaPDF2\Core\Writer\FileWriter;
+use setasign\SetaPDF2\Core\Writer\StringWriter;
+use setasign\SetaPDF2\Core\Writer\TempFileWriter;
+use setasign\SetaPDF2\Signer\DocumentSecurityStore;
+use setasign\SetaPDF2\Signer\Signature\Module\Pades;
+use setasign\SetaPDF2\Signer\Signer;
+use setasign\SetaPDF2\Signer\TmpDocument;
+use setasign\SetaPDF2\Signer\ValidationRelatedInfo\Collector;
+use setasign\SetaPDF2\Signer\X509\Certificate;
+use setasign\SetaPDF2\Signer\X509\Collection;
 
 require_once(__DIR__ . '/../vendor/autoload.php');
 
@@ -45,7 +53,6 @@ if (!isset($_SESSION['accessToken']['expires']) || $_SESSION['accessToken']['exp
 $accessToken = $_SESSION['accessToken']['access_token'];
 
 $httpClient = new GuzzleHttp\Client();
-$httpClient = new Mjelamanov\GuzzlePsr18\Client($httpClient);
 $requestFactory = new Http\Factory\Guzzle\RequestFactory();
 $streamFactory = new Http\Factory\Guzzle\StreamFactory();
 $client = new Client($apiUri, $httpClient, $requestFactory, $streamFactory);
@@ -115,8 +122,8 @@ switch ($action) {
         }
 
         $certificates = $credentialInfo['cert']['certificates'];
-        $certificates = array_map(function (string $certificate) {
-            return new SetaPDF_Signer_X509_Certificate($certificate);
+        $certificates = array_map(static function (string $certificate) {
+            return new Certificate($certificate);
         }, $certificates);
         // to cache the certificate files
         //foreach ($certificates as $k => $certificate) {
@@ -129,14 +136,14 @@ switch ($action) {
         $signatureAlgorithmOid = $credentialInfo['key']['algo'][0];
 
         // create a writer instance
-        $writer = new SetaPDF_Core_Writer_File($resultPath);
+        $writer = new FileWriter($resultPath);
         // create the document instance
-        $document = SetaPDF_Core_Document::loadByFilename($fileToSign, $writer);
+        $document = Document::loadByFilename($fileToSign, $writer);
 
         // create the signer instance
-        $signer = new SetaPDF_Signer($document);
+        $signer = new Signer($document);
 
-        $module = new SetaPDF_Signer_Signature_Module_Pades();
+        $module = new Pades();
         $module->setCertificate($certificate);
         $module->setExtraCertificates($certificates);
 
@@ -144,7 +151,7 @@ switch ($action) {
         $module->setDigest($hashAlgorithm);
 
         // create a collector instance
-        $collector = new SetaPDF_Signer_ValidationRelatedInfo_Collector(new SetaPDF_Signer_X509_Collection($certificates));
+        $collector = new Collector(new Collection($certificates));
         // collect revocation information for this certificate
         $vriData = $collector->getByCertificate($certificate);
 
@@ -157,7 +164,7 @@ switch ($action) {
 
         $signer->setSignatureContentLength(20000);
         $tmpDocument = $signer->preSign(
-            new SetaPDF_Core_Writer_File(SetaPDF_Core_Writer_TempFile::createTempPath()),
+            new FileWriter(TempFileWriter::createTempPath()),
             $module
         );
         if ($signAlgorithm === Digest::RSA_PSS_ALGORITHM) {
@@ -201,12 +208,12 @@ switch ($action) {
         $hashData = $_SESSION[__FILE__]['hashData'];
 
         /**
-         * @var SetaPDF_Signer_Signature_Module_Pades $module
+         * @var Pades $module
          */
         $module = $_SESSION[__FILE__]['module'];
 
         /**
-         * @var SetaPDF_Signer_TmpDocument $tmpDocument
+         * @var TmpDocument $tmpDocument
          */
         $tmpDocument = $_SESSION[__FILE__]['tmpDocument'];
 
@@ -234,11 +241,11 @@ switch ($action) {
         // get the CMS structur from the signature module
         $cms = (string) $module->getCms();
 
-        $reader = new SetaPDF_Core_Reader_File($fileToSign);
-        $tmpWriter = new SetaPDF_Core_Writer_TempFile();
+        $reader = new FileReader($fileToSign);
+        $tmpWriter = new TempFileWriter();
 
-        $document = SetaPDF_Core_Document::load($reader, $tmpWriter);
-        $signer = new SetaPDF_Signer($document);
+        $document = Document::load($reader, $tmpWriter);
+        $signer = new Signer($document);
 
         $field = $signer->getSignatureField();
         $fieldName = $field->getQualifiedName();
@@ -247,21 +254,21 @@ switch ($action) {
         $signer->saveSignature($tmpDocument, $cms);
         $document->finish();
 
-        $writer = new SetaPDF_Core_Writer_String();
-        $document = \SetaPDF_Core_Document::loadByFilename($tmpWriter->getPath(), $writer);
+        $writer = new StringWriter();
+        $document = Document::loadByFilename($tmpWriter->getPath(), $writer);
 
         // create a VRI collector instance
-        $collector = new SetaPDF_Signer_ValidationRelatedInfo_Collector(new SetaPDF_Signer_X509_Collection($_SESSION[__FILE__]['certificates']));
+        $collector = new Collector(new Collection($_SESSION[__FILE__]['certificates']));
         $vriData = $collector->getByFieldName(
             $document,
             $fieldName,
-            SetaPDF_Signer_ValidationRelatedInfo_Collector::SOURCE_OCSP_OR_CRL,
+            Collector::SOURCE_OCSP_OR_CRL,
             null,
             null,
             $_SESSION[__FILE__]['vriData'] // pass the previously gathered VRI data
         );
         // and add it to the document.
-        $dss = new SetaPDF_Signer_DocumentSecurityStore($document);
+        $dss = new DocumentSecurityStore($document);
         $dss->addValidationRelatedInfoByFieldName(
             $fieldName,
             $vriData->getCrls(),

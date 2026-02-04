@@ -5,10 +5,11 @@ declare(strict_types=1);
 use setasign\SetaPDF\Signer\Module\CSC\Client;
 use setasign\SetaPDF\Signer\Module\CSC\ClientException;
 use setasign\SetaPDF\Signer\Module\CSC\Module;
-
-ini_set('display_errors', '1');
-ini_set('display_startup_errors', '1');
-error_reporting(E_ALL);
+use setasign\SetaPDF2\Core\Document;
+use setasign\SetaPDF2\Core\Writer\FileWriter;
+use setasign\SetaPDF2\Signer\Signature\Appearance\Dynamic as DynamicAppearance;
+use setasign\SetaPDF2\Signer\SignatureField;
+use setasign\SetaPDF2\Signer\Signer;
 
 require_once(__DIR__ . '/../vendor/autoload.php');
 
@@ -38,7 +39,6 @@ if (!isset($_SESSION['accessToken']['expires']) || $_SESSION['accessToken']['exp
 $accessToken = $_SESSION['accessToken']['access_token'];
 
 $httpClient = new GuzzleHttp\Client();
-$httpClient = new Mjelamanov\GuzzlePsr18\Client($httpClient);
 $requestFactory = new Http\Factory\Guzzle\RequestFactory();
 $streamFactory = new Http\Factory\Guzzle\StreamFactory();
 $client = new Client($apiUri, $httpClient, $requestFactory, $streamFactory);
@@ -88,17 +88,17 @@ if (isset($_GET['pin'])) {
 }
 
 // create a writer instance
-$writer = new SetaPDF_Core_Writer_File($resultPath);
+$writer = new FileWriter($resultPath);
 // create the document instance
-$document = SetaPDF_Core_Document::loadByFilename($fileToSign, $writer);
+$document = Document::loadByFilename($fileToSign, $writer);
 
 // create the signer instance
-$signer = new SetaPDF_Signer($document);
+$signer = new Signer($document);
 
 $field = $signer->addSignatureField(
     'Signature',
     1,
-    SetaPDF_Signer_SignatureField::POSITION_RIGHT_TOP,
+    SignatureField::POSITION_RIGHT_TOP,
     ['x' => -160, 'y' => -100],
     180,
     60
@@ -106,7 +106,7 @@ $field = $signer->addSignatureField(
 
 $signer->setSignatureFieldName($field->getQualifiedName());
 
-$appearance = new SetaPDF_Signer_Signature_Appearance_Dynamic($module);
+$appearance = new DynamicAppearance($module);
 $signer->setAppearance($appearance);
 
 try {

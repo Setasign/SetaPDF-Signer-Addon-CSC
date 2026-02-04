@@ -6,10 +6,6 @@ use League\OAuth2\Client\Provider\GenericProvider;
 use League\OAuth2\Client\Token\AccessToken;
 use setasign\SetaPDF\Signer\Module\CSC\Client;
 
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-
 require_once(__DIR__ . '/../vendor/autoload.php');
 
 /**
@@ -20,7 +16,6 @@ $settings = require __DIR__ . '/settings.php';
 $apiUri = $settings['apiUri'];
 
 $httpClient = new GuzzleHttp\Client();
-$httpClient = new Mjelamanov\GuzzlePsr18\Client($httpClient);
 $requestFactory = new Http\Factory\Guzzle\RequestFactory();
 $streamFactory = new Http\Factory\Guzzle\StreamFactory();
 
