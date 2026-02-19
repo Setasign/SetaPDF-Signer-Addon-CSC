@@ -97,30 +97,33 @@ class Client
     }
 
     /**
-     * Helper method to handle errors in json_decode
+     * Create the account_token value.
      *
-     * @param string $json
-     * @param bool $assoc
-     * @param int $depth
-     * @param int $options
-     * @return mixed
-     * @throws ClientException
+     * @param string $accountId
+     * @param string $clientId
+     * @param string $clientSecret
+     * @return string
+     * @throws \JsonException
      */
-    protected function json_decode(string $json, bool $assoc = true, int $depth = 512, int $options = 0)
+    public function createAccountToken(string $accountId, string $clientId, string $clientSecret): string
     {
-        // Clear json_last_error()
-        \json_encode(null);
+        $header = '{"alg":"HS256","typ":"JWT"}';
+        $payload = \json_encode([
+            'sub' => $accountId,
+            'iat' => \time(),
+            'jti' => \hash('sha256', \uniqid('', true)),
+            'iss' => 'SetaPDF-Signer CSC API',
+            "azp" => $clientId
+        ], \JSON_THROW_ON_ERROR);
 
-        $data = @\json_decode($json, $assoc, $depth, $options);
+        $b64urlEncode = static function(string $data): string {
+            return \rtrim(\strtr(\base64_encode($data), '+/', '-_'), '=');
+        };
 
-        if (\json_last_error() !== JSON_ERROR_NONE) {
-            throw new \InvalidArgumentException(\sprintf(
-                'Unable to decode JSON: %s',
-                \json_last_error_msg()
-            ));
-        }
+        $bytesToSign = $b64urlEncode($header) . '.' . $b64urlEncode($payload);
+        $signature = \hash_hmac('sha256', $bytesToSign, \hash('sha256', $clientSecret, true), true);
 
-        return $data;
+        return $bytesToSign . '.' . $b64urlEncode($signature);
     }
 
     /**
@@ -130,6 +133,7 @@ class Client
      * @return array
      * @throws ClientExceptionInterface
      * @throws ClientException
+     * @throws \JsonException
      */
     public function call(string $path, ?string $accessToken = null, array $inputData = []): array
     {
@@ -154,7 +158,7 @@ class Client
             throw new ClientException('Error on ' . $path . ': ' . $response->getBody(), $response);
         }
 
-        return $this->json_decode((string) $response->getBody());
+        return \json_decode((string) $response->getBody(), true, 512, \JSON_THROW_ON_ERROR);
     }
 
     /**
@@ -165,7 +169,9 @@ class Client
      *
      * @param string|null $lang
      * @return array
+     * @throws ClientException
      * @throws ClientExceptionInterface
+     * @throws \JsonException
      * @see CSC API 11.1 /info
      */
     public function info(?string $lang = null): array
@@ -190,7 +196,9 @@ class Client
      * @param string|null $pageToken
      * @param string|null $clientData
      * @return array
-     * @throws ClientExceptionInterface|ClientException
+     * @throws ClientException
+     * @throws ClientExceptionInterface
+     * @throws \JsonException
      * @see CSC API 11.4 /credentials/list
      */
     public function credentialsList(
@@ -229,7 +237,9 @@ class Client
      * @param string|null $lang
      * @param string|null $clientData
      * @return array
-     * @throws ClientExceptionInterface|ClientException
+     * @throws ClientException
+     * @throws ClientExceptionInterface
+     * @throws \JsonException
      * @see CSC API 11.5 /credentials/info
      */
     public function credentialsInfo(
@@ -275,7 +285,9 @@ class Client
      * @param string $credentialID
      * @param string|null $clientData
      * @return array
-     * @throws ClientExceptionInterface|ClientException
+     * @throws ClientException
+     * @throws ClientExceptionInterface
+     * @throws \JsonException
      * @see CSC API 11.8 /credentials/sendOTP
      */
     public function credentialsSendOTP(string $accessToken, string $credentialID, ?string $clientData = null): array
@@ -304,7 +316,9 @@ class Client
      * @param string|null $description
      * @param string|null $clientData
      * @return array
-     * @throws ClientExceptionInterface|ClientException
+     * @throws ClientException
+     * @throws ClientExceptionInterface
+     * @throws \JsonException
      * @see CSC API 11.6 /credentials/authorize
      */
     public function credentialsAuthorize(
@@ -350,7 +364,9 @@ class Client
      * @param string|null $signAlgoParams
      * @param string|null $clientData
      * @return array
-     * @throws ClientExceptionInterface|ClientException
+     * @throws ClientException
+     * @throws ClientExceptionInterface
+     * @throws \JsonException
      * @see CSC API 11.9 /signatures/signHash
      */
     public function signaturesSignHash(
