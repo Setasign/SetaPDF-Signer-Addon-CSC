@@ -148,21 +148,24 @@ class Module implements
 
     public static function fixEccSignatures(string $signatureValue): string
     {
-        throw new NotImplementedException(
-            'EC signatures were not tested yet. Please contact support@setasign.com with details of your CSC API.'
-        );
         // Let's ensure that the ECDSA-Sig-Value is DER encoded.
         // Some other services (e.g. KMS systems)  return the signature value as raw concatenated "r+s" value.
         // Maybe this also happens by a CSC API? The signature encoding is sadly not defined.
-//        try {
-//            Asn1Element::parse($signatureValue);
-//
-//        } catch (Asn1Exception $e) {
+        try {
+            // we would catch this raw structure here
+            Asn1Element::parse($signatureValue);
+
+        } catch (Asn1Exception $e) {
+            // as we only have a good service found, we still throw an exception for further investigation
+            throw new NotImplementedException(
+                'Faulty EC signatures were not tested yet. Please contact support@setasign.com with details of your CSC API.'
+            );
+
 //            /* According to RFC5753 2.1.1:
 //             *  - signature MUST contain the DER encoding (as an octet string) of a value of the ASN.1 type
 //             *    ECDSA-Sig-Value (see Section 7.2).
 //             */
-//            $len = strlen($signatureValue);
+//            $len = \strlen($signatureValue);
 //
 //            $s = \substr($signatureValue, 0, $len / 2);
 //            if (\ord($s[0]) & 0x80) { // ensure positive integers
@@ -173,7 +176,7 @@ class Module implements
 //                $r = "\0" . $r;
 //            }
 //
-//            $signatureValue = new Asn1Element(
+//            $signatureValue = (string)new Asn1Element(
 //                Asn1Element::SEQUENCE | Asn1Element::IS_CONSTRUCTED,
 //                '',
 //                [
@@ -181,9 +184,9 @@ class Module implements
 //                    new Asn1Element(Asn1Element::INTEGER, $r),
 //                ]
 //            );
-//        }
-//
-//        return $signatureValue;
+        }
+
+        return $signatureValue;
     }
 
     /**
