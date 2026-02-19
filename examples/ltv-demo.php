@@ -82,28 +82,7 @@ $module = new Module($accessToken, $client);
 $module->setCredentialId($credentialId);
 $module->setSignatureAlgorithmOid($algorithm);
 $module->setCertificate($certificate);
-
-// now add this information to the CMS container
 $module->setExtraCertificates($certificates);
-
-// create a collection of trusted certificats:
-$trustedCertificates = new Collection($certificates[count($certificates) - 1]);
-$trustedCertificates->add(PemHelper::extractFromFile($trustedCertificatesPath));
-// sadly not all CSC API implementations return the full chain (in our tests e.g. SSL.com), so we have to
-// add a trusted root on our own:
-foreach ($otherTrustedCertificatePaths as $otherTrustedCertificatePath) {
-    $trustedCertificates->addFromFile($otherTrustedCertificatePath);
-}
-
-// create a collector instance
-$collector = new Collector($trustedCertificates);
-$vriData = $collector->getByCertificate($certificate);
-foreach ($vriData->getOcspResponses() as $ocspResponse) {
-    $module->addOcspResponse($ocspResponse);
-}
-foreach ($vriData->getCrls() as $crl) {
-    $module->addCrl($crl);
-}
 
 if ($credentialInfo['authMode'] === 'explicit' && !isset($_GET['otp']) && !isset($_GET['pin'])) {
     // you should check the OTP and/or PIN entry in $credentialInfo for how to setup authentication exactly
@@ -128,8 +107,8 @@ $document = Document::loadByFilename($fileToSign, $tmpWriter);
 
 // create the signer instance
 $signer = new Signer($document);
-// because of the timestamp and VRI data we need more space for the signature container
-$signer->setSignatureContentLength(40000);
+// because of the timestamp we need more space for the signature container
+$signer->setSignatureContentLength(20000);
 
 // setup a timestamp module
 $tsModule = new Curl($timestampingUrl);
@@ -157,6 +136,14 @@ try {
 // create a new instance
 $document = Document::loadByFilename($tmpWriter->getPath(), $writer);
 
+// create a collection of trusted certificats:
+$trustedCertificates = new Collection($certificates[count($certificates) - 1]);
+$trustedCertificates->add(PemHelper::extractFromFile($trustedCertificatesPath));
+// sadly not all CSC API implementations return the full chain (in our tests e.g. SSL.com), so we have to
+// add a trusted root on our own:
+foreach ($otherTrustedCertificatePaths as $otherTrustedCertificatePath) {
+    $trustedCertificates->addFromFile($otherTrustedCertificatePath);
+}
 // create a VRI collector instance
 $collector = new Collector($trustedCertificates);
 // Use IPv4 to bypass an issue at http://ocsp.ensuredca.com
@@ -165,19 +152,14 @@ $collector = new Collector($trustedCertificates);
 //]);
 
 // get VRI for the timestamp signature
-$vriData = $collector->getByFieldName(
-    $document,
-    $signatureField->getQualifiedName(),
-    Collector::SOURCE_OCSP_OR_CRL,
-    null,
-    null,
-    $vriData // pass the previously gathered VRI data
-);
+$vriData = $collector->getByFieldName($document, $signatureField->getQualifiedName());
 
 //$logger = $collector->getLogger();
+//echo "<pre>";
 //foreach ($logger->getLogs() as $log) {
 //    echo str_repeat(' ', $log->getDepth() * 4) . $log . "\n";
 //}
+//echo "</pre>";
 
 // and add it to the document.
 $dss = new DocumentSecurityStore($document);
