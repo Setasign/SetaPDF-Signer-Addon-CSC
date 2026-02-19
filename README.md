@@ -7,8 +7,8 @@ Electronic Seals to digital sign PDF documents in pure PHP.
 The API documentation can be found on the Cloud Signature Consortium website:
 https://cloudsignatureconsortium.org/resources/download-api-specifications/
 
-At the time of writing the module is tested with the eSigner CSC API from SSL.com (v0) and the Remote Signing Service 
-CSC API from Entrust (v0).
+At the time of writing the module is tested with the eSigner CSC API from [SSL.com](https://www.ssl.com/esigner/) (v0), the Remote Signing Service 
+CSC API from Entrust (v0) and CSC API from the [A-Trust Hash-Signing](https://www.a-trust.at/de/produkte/signaturl%C3%B6sungen_f%C3%BCr_unternehmen/hash-signing_csc/) (v1).
 It currently does not support all features or variances that may appear in other API implementations.
 
 For usage with SSL.com you can follow this integration guide to get a better understanding of how to setup a test 
@@ -18,8 +18,8 @@ https://www.ssl.com/guide/integration-guide-testing-remote-signing-with-esigner-
 
 ## Known not implemented features
 
-At the moment the module does not support RSA_PSS or ECDSA as signing algorithm because of missing testing options.
-Both are implemented but will throw an exception to get a chance for a test case. Please contact us at
+At the moment the module does not support RSA_PSS as signing algorithm because of missing testing options.
+The current implementation but will throw an exception to get a chance for a test case. Please contact us at
 support@setasign.com so that we can work on a final implementation together.
 
 Authentification is only supported over [OAuth2](https://oauth.net/2/). Authentification over HTTP Basic or Digest
@@ -31,7 +31,7 @@ the OTP generation by yourself - see API `credentials/sendOTP` (11.8).
 
 ## Requirements
 
-To use this package you need access to a CSC API (v0).
+To use this package you need access to a CSC API (v0 or v1).
 
 This package is developed and tested on PHP >= 7.3 up to PHP 8.5. Requirements of the 
 [SetaPDF-Signer](https://www.setasign.com/signer)
