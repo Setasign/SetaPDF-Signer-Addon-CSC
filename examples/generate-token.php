@@ -57,6 +57,13 @@ if (isset($_GET['reset'])) {
     $accessToken = new AccessToken($_SESSION['accessToken']);
 }
 
+if (isset($_GET['error'])) {
+    echo "<pre>";
+    var_dump($_GET);
+    echo "</pre>";
+    die();
+}
+
 /** @noinspection PhpStatementHasEmptyBodyInspection */
 if (isset($accessToken) && !$accessToken->hasExpired()) {
     // do nothing - the access token is still valid
@@ -73,9 +80,19 @@ if (isset($accessToken) && !$accessToken->hasExpired()) {
         // Fetch the authorization URL from the provider; this returns the
         // urlAuthorize option and generates and applies any necessary parameters
         // (e.g. state).
-        $authorizationUrl = $provider->getAuthorizationUrl([
+        $options = [
             'scope' => $settings['oauth2scope']
-        ]);
+        ];
+
+        if (isset($settings['accountId'])) {
+            $options['account_token'] = $client->createAccountToken(
+                $settings['accountId'],
+                $settings['clientId'],
+                $settings['clientSecret']
+            );
+        }
+
+        $authorizationUrl = $provider->getAuthorizationUrl($options);
 
         // Get the state generated for you and store it to the session.
         $_SESSION['oauth2state'] = $provider->getState();
@@ -100,7 +117,9 @@ if (isset($accessToken) && !$accessToken->hasExpired()) {
             'code' => $_GET['code']
         ]);
     } catch (Throwable $e) {
+        echo "<pre>";
         var_dump($e);
+        echo "</pre>";
         die();
     }
     $_SESSION['accessToken'] = $accessToken->jsonSerialize();
