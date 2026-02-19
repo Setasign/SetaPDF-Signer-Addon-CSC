@@ -99,7 +99,7 @@ try {
     echo $e->getMessage() . ': ' . $e->getResponse()->getBody();
     echo '<br/><a href="?">restart</a>';
     die();
-} catch (\Exception $e) {
+} catch (\Throwable $e) {
     echo 'An error occured:';
     echo $e->getMessage();
     echo '<br/><a href="?">restart</a>';
