@@ -150,18 +150,6 @@ switch ($action) {
         ['hashAlgorithm' => $hashAlgorithm, 'signAlgorithm' => $signAlgorithm] = Module::findHashAndSignAlgorithm($signatureAlgorithmOid);
         $module->setDigest($hashAlgorithm);
 
-        // create a collector instance
-        $collector = new Collector(new Collection($certificates));
-        // collect revocation information for this certificate
-        $vriData = $collector->getByCertificate($certificate);
-
-        foreach ($vriData->getOcspResponses() as $ocspResponse) {
-            $module->addOcspResponse($ocspResponse);
-        }
-        foreach ($vriData->getCrls() as $crl) {
-            $module->addCrl($crl);
-        }
-
         $signer->setSignatureContentLength(20000);
         $tmpDocument = $signer->preSign(
             new FileWriter(TempFileWriter::createTempPath()),
@@ -175,7 +163,8 @@ switch ($action) {
         $authorizationUrl = $provider->getAuthorizationUrl([
             'scope' => 'credential',
             'credentialID' => $credentialId,
-            'hash' => $hashData
+            'hash' => $hashData,
+            'numSignatures' => 1,
         ]);
 
         $_SESSION[__FILE__] = [
@@ -186,7 +175,6 @@ switch ($action) {
             'signAlgorithm' => $signAlgorithm,
             'signAlgorithmOid' => $signatureAlgorithmOid,
             'certificates' => $certificates,
-            'vriData' => $vriData,
             'oauth2state' => $provider->getState(),
         ];
 
@@ -230,7 +218,7 @@ switch ($action) {
             Digest::$oids[$module->getDigest()],
             isset($signatureAlgorithmParameters) ? (string)$signatureAlgorithmParameters : null
         );
-//    var_dump($result);
+
         $signatureValue = (string) \base64_decode($result['signatures'][0]);
         if ($_SESSION[__FILE__]['signAlgorithm'] === Digest::ECDSA_ALGORITHM) {
             $signatureValue = Module::fixEccSignatures($signatureValue);
@@ -259,14 +247,11 @@ switch ($action) {
 
         // create a VRI collector instance
         $collector = new Collector(new Collection($_SESSION[__FILE__]['certificates']));
-        $vriData = $collector->getByFieldName(
-            $document,
-            $fieldName,
-            Collector::SOURCE_OCSP_OR_CRL,
-            null,
-            null,
-            $_SESSION[__FILE__]['vriData'] // pass the previously gathered VRI data
+        $collector->setAllowTrustedIntermediateCertificatesWithoutVri(
+            isset($settings['allowTrustedIntermediateCertificatesWithoutVri'])
         );
+
+        $vriData = $collector->getByFieldName($document, $fieldName);
         // and add it to the document.
         $dss = new DocumentSecurityStore($document);
         $dss->addValidationRelatedInfoByFieldName(
