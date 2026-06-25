@@ -116,4 +116,4 @@ More about the authorization modes can be found in "8.2 Credential authorization
 
 ## License
 
-This package is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+This package is open-source software licensed under the [MIT license](https://opensource.org/licenses/MIT).
